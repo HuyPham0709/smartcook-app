@@ -1,5 +1,5 @@
-import { Heart, Bookmark, Shuffle, CheckCircle } from 'lucide-react';
-import { useState } from 'react';
+import { Heart, Bookmark, Shuffle, CheckCircle } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 interface Recipe {
@@ -46,7 +46,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
         </div>
-        <div className="recipe-prep-time">
+        <div
+          className="absolute top-3 right-3 px-3 py-1 rounded-full text-white text-sm font-medium backdrop-blur-sm"
+          style={{ backgroundColor: "rgba(168, 213, 186, 0.9)" }}
+        >
           {recipe.prepTime}
         </div>
       </Link>
@@ -61,7 +64,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         </Link>
 
         {/* Author */}
-        <Link to={`/profile/${recipe.id}`} className="flex items-center gap-2 mb-4 group">
+        <Link
+          to={`/profile/${recipe.id}`}
+          className="flex items-center gap-2 mb-4 group"
+        >
           <img
             src={recipe.author.avatar}
             alt={recipe.author.name}
@@ -82,26 +88,40 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           {/* Like Button */}
           <button
             onClick={handleLike}
-            aria-label={`Like recipe, ${likes} likes`}
-            className={`recipe-action-button ${isLiked ? 'recipe-action-button--liked' : ''}`}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full border-2 transition-all hover:scale-105"
+            style={{
+              backgroundColor: isLiked ? "#fee2e2" : "white",
+              borderColor: isLiked ? "#ef4444" : "#e5e7eb",
+              color: isLiked ? "#ef4444" : "#6b7280",
+            }}
           >
-            <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+            <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
             <span className="text-xs font-medium">{likes}</span>
           </button>
 
           {/* Save Button */}
           <button
             onClick={handleSave}
-            aria-label={isSaved ? 'Remove saved recipe' : 'Save recipe'}
-            className={`recipe-action-button ${isSaved ? 'recipe-action-button--saved' : ''}`}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full border-2 transition-all hover:scale-105"
+            style={{
+              backgroundColor: isSaved ? "#dbeafe" : "white",
+              borderColor: isSaved ? "#3b82f6" : "#e5e7eb",
+              color: isSaved ? "#3b82f6" : "#6b7280",
+            }}
           >
-            <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+            <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+            <span className="sr-only">{isSaved ? "Saved" : "Save"}</span>
           </button>
 
           {/* Remix Button */}
           <Link
             to={`/create?remixFrom=${recipe.id}`}
-            className="recipe-action-button recipe-action-button--remix"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full border-2 transition-all hover:scale-105"
+            style={{
+              backgroundColor: "var(--orange)",
+              borderColor: "var(--orange-dark)",
+              color: "white",
+            }}
           >
             <Shuffle className="w-4 h-4" />
             <span className="text-xs font-medium">Remix</span>

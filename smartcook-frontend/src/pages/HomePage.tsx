@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Search, TrendingUp } from 'lucide-react';
-import  RecipeCard  from '../components/RecipeCard.tsx';
+import  RecipeCard  from '../components/RecipeCard';
 
 const categories = [
   'Vegan',
