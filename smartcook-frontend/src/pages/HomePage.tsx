@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, TrendingUp } from 'lucide-react';
-import RecipeCard from '../components/RecipeCard.tsx';
+import  RecipeCard  from '../components/RecipeCard';
 
-// Thêm Interface để TypeScript nhận diện cấu trúc dữ liệu từ API
 interface Recipe {
   id: number;
   title: string;

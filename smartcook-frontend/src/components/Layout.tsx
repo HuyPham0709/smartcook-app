@@ -1,7 +1,7 @@
-import { Outlet, Link, useLocation } from 'react-router';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { ChefHat, Home, Plus, User, Search, Settings, Shield } from 'lucide-react';
 
-export function Layout() {
+export default function Layout() {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 
@@ -15,7 +15,7 @@ export function Layout() {
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--green-light)' }}>
                 <ChefHat className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-semibold" style={{ color: 'var(--green-medium)' }}>RecipeShare</h1>
+              <h1 className="text-xl font-semibold" style={{ color: 'var(--green-medium)' }}>SmartCook</h1>
             </Link>
             
             <nav className="hidden md:flex items-center gap-6">
@@ -65,7 +65,7 @@ export function Layout() {
               className="px-6 py-2 rounded-full text-white transition-all hover:opacity-90"
               style={{ backgroundColor: 'var(--orange)' }}
             >
-              Share Recipe
+              Login
             </button>
           </div>
         </div>
