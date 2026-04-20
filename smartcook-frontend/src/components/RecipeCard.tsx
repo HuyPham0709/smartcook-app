@@ -89,8 +89,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           <button
             onClick={handleLike}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full border-2 transition-all hover:scale-105"
-            style={{
-              backgroundColor: isLiked ? "#fee2e2" : "white",
+            style={{backgroundColor: isLiked ? "#fee2e2" : "white",
               borderColor: isLiked ? "#ef4444" : "#e5e7eb",
               color: isLiked ? "#ef4444" : "#6b7280",
             }}

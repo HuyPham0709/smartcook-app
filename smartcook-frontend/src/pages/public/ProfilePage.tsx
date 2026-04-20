@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { Award, BookMarked, ChefHat, CheckCircle, Users, Heart } from 'lucide-react';
-import  RecipeCard  from '../components/RecipeCard';
+import  RecipeCard  from '../../components/RecipeCard';
 
 const badges = [
   { id: 1, name: 'Rising Star', icon: '⭐', description: 'First 100 likes', color: '#FFD700' },

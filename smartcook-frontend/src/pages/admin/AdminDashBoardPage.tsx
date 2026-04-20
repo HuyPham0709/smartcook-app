@@ -1,46 +1,94 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, FileText, TrendingUp, AlertCircle, Eye, Heart, MessageCircle } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const stats = [
-  { title: 'Total Users', value: '12,543', change: '+12.5%', icon: Users, color: '#7CBD92' },
-  { title: 'Total Recipes', value: '3,421', change: '+8.2%', icon: FileText, color: '#FF8C42' },
-  { title: 'Active Users (24h)', value: '1,832', change: '+5.3%', icon: TrendingUp, color: '#3B82F6' },
-  { title: 'Flagged Posts', value: '23', change: '-15.2%', icon: AlertCircle, color: '#EF4444' },
-];
-
-const userGrowthData = [
-  { month: 'Jan', users: 4000 },
-  { month: 'Feb', users: 5200 },
-  { month: 'Mar', users: 6800 },
-  { month: 'Apr', users: 8100 },
-  { month: 'May', users: 9500 },
-  { month: 'Jun', users: 12543 },
-];
-
-const categoryData = [
-  { name: 'Breakfast', value: 842, color: '#FF8C42' },
-  { name: 'Lunch', value: 1234, color: '#7CBD92' },
-  { name: 'Dinner', value: 987, color: '#3B82F6' },
-  { name: 'Desserts', value: 358, color: '#EF4444' },
-];
-
-const topRecipes = [
-  { id: 1, title: 'Fluffy Pancakes with Berries', author: 'Sarah Johnson', views: 12543, likes: 3421, comments: 234 },
-  { id: 2, title: 'Healthy Buddha Bowl', author: 'Mike Chen', views: 9876, likes: 2156, comments: 189 },
-  { id: 3, title: 'Decadent Chocolate Cake', author: 'Chef Marcus', views: 8765, likes: 1987, comments: 156 },
-  { id: 4, title: 'Classic Pasta Carbonara', author: 'Isabella Romano', views: 7654, likes: 1654, comments: 143 },
-  { id: 5, title: 'Grilled Salmon', author: 'Alex Kim', views: 6543, likes: 1432, comments: 98 },
-];
-
 export default function AdminDashboardPage() {
+  // 1. Thêm State để lưu khoảng thời gian lọc (Mặc định 30 ngày)
+  const [timeRange, setTimeRange] = useState('30d');
+
+  // State lưu trữ dữ liệu từ API bao gồm cả data cho 2 biểu đồ
+  const [data, setData] = useState<any>({
+    stats: { totalUsers: 0, totalRecipes: 0, activeUsers: 0, flaggedPosts: 0 },
+    topRecipes: [],
+    userGrowth: [],
+    categoryData: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  // 2. Thêm timeRange vào dependency array và query string
+  useEffect(() => {
+    setLoading(true);
+    // Gọi API lấy dữ liệu thực tế từ SQL Server kèm theo bộ lọc
+    fetch(`http://localhost:3000/api/admin/dashboard?range=${timeRange}`)
+      .then(res => res.json())
+      .then(json => {
+        setData(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Lỗi kết nối API Dashboard:", err);
+        setLoading(false);
+      });
+  }, [timeRange]);
+
+  // 3. Map lại dữ liệu: Dùng fallback (??) để code không bị lỗi gãy UI 
+  // nếu Backend trả về cấu trúc mới (chứa value & change) hoặc vẫn giữ cấu trúc cũ (chỉ có số)
+  const statsDisplay = [
+    { 
+      title: 'Total Users', 
+      value: (data.stats?.totalUsers?.value ?? data.stats?.totalUsers ?? 0).toLocaleString(), 
+      change: data.stats?.totalUsers?.change || '+0%', 
+      icon: Users, 
+      color: '#7CBD92' 
+    },
+    { 
+      title: 'Total Recipes', 
+      value: (data.stats?.totalRecipes?.value ?? data.stats?.totalRecipes ?? 0).toLocaleString(), 
+      change: data.stats?.totalRecipes?.change || '+0%', 
+      icon: FileText, 
+      color: '#FF8C42' 
+    },
+    { 
+      title: 'Active Users', 
+      value: (data.stats?.activeUsers?.value ?? data.stats?.activeUsers ?? 0).toLocaleString(), 
+      change: data.stats?.activeUsers?.change || '+0%', 
+      icon: TrendingUp, 
+      color: '#3B82F6' 
+    },
+    { 
+      title: 'Flagged Posts', 
+      value: (data.stats?.flaggedPosts?.value ?? data.stats?.flaggedPosts ?? 0).toString(), 
+      change: data.stats?.flaggedPosts?.change || '0%', 
+      icon: AlertCircle, 
+      color: '#EF4444' 
+    },
+  ];
+
+  if (loading) return <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center text-xl">Đang tải dữ liệu Dashboard...</div>;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Platform overview and analytics</p>
+        
+        {/* Header - Thêm thẻ div bọc ngoài để chứa Dropdown */}
+        <div className="mb-8 flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+            <p className="text-gray-600">Platform overview and analytics</p>
+          </div>
+          
+          {/* Dropdown Lọc Thời Gian (CSS được mượn từ nút bấm của bạn ở dưới) */}
+          <select
+            value={timeRange} 
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="px-4 py-2.5 bg-white border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:border-[var(--orange)] transition-colors cursor-pointer"
+          >
+            <option value="1d">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="1y">This year</option>
+          </select>
         </div>
 
         {/* Quick Links */}
@@ -61,7 +109,7 @@ export default function AdminDashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat) => {
+          {statsDisplay.map((stat) => {
             const Icon = stat.icon;
             return (
               <div key={stat.title} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
@@ -72,6 +120,7 @@ export default function AdminDashboardPage() {
                   >
                     <Icon className="w-6 h-6" style={{ color: stat.color }} />
                   </div>
+                  {/* GIỮ NGUYÊN CSS LOGIC MÀU SẮC CỦA BẠN */}
                   <span
                     className={`text-sm font-medium px-2 py-1 rounded ${
                       stat.change.startsWith('+') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -93,7 +142,7 @@ export default function AdminDashboardPage() {
           <div className="bg-white rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">User Growth</h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={userGrowthData}>
+              <BarChart data={data.userGrowth}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -110,7 +159,7 @@ export default function AdminDashboardPage() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={categoryData}
+                  data={data.categoryData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -119,7 +168,7 @@ export default function AdminDashboardPage() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {categoryData.map((entry, index) => (
+                  {data.categoryData?.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -138,37 +187,20 @@ export default function AdminDashboardPage() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Recipe
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Author
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Views
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Likes
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Comments
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipe</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Likes</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comments</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {topRecipes.map((recipe) => (
+                {data.topRecipes?.map((recipe: any) => (
                   <tr key={recipe.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{recipe.title}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-600">{recipe.author}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Eye className="w-4 h-4" />
-                        {recipe.views.toLocaleString()}
-                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2 text-sm text-gray-600">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, TrendingUp } from 'lucide-react';
-import  RecipeCard  from '../components/RecipeCard';
+import  RecipeCard  from '../../components/RecipeCard';
 
 interface Recipe {
   id: number;
@@ -42,13 +42,19 @@ export default function HomePage() {
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        // Lưu ý: Đổi URL này thành URL API thực tế của bạn (ví dụ: lấy list recipe)
-        const response = await fetch('http://localhost:3000/recipes'); 
+        // Đã sửa đường dẫn thành /api/users để khớp với file server.js bên backend
+        const response = await fetch('http://localhost:3000/api/users'); 
         if (!response.ok) {
           throw new Error('Lỗi khi kết nối đến server');
         }
         const data = await response.json();
-        setTrendingRecipes(data);
+        
+        // Đảm bảo dữ liệu trả về là mảng để không bị lỗi .map() làm sập trang
+        if (Array.isArray(data)) {
+          setTrendingRecipes(data);
+        } else {
+          setTrendingRecipes([]);
+        }
       } catch (error) {
         console.error("Lỗi khi tải danh sách công thức:", error);
       } finally {
@@ -115,7 +121,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trendingRecipes.map((recipe) => (
+            {trendingRecipes?.map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
           </div>

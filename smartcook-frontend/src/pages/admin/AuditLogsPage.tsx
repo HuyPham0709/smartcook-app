@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, Search, Filter, Download, User, Settings, Trash2, Shield } from 'lucide-react';
 
 interface AuditLog {
@@ -11,103 +11,27 @@ interface AuditLog {
   severity: 'low' | 'medium' | 'high';
 }
 
-const auditLogs: AuditLog[] = [
-  {
-    id: 1,
-    timestamp: '2026-04-16 14:32:15',
-    admin: 'admin@recipeshare.com',
-    action: 'Deleted Recipe',
-    target: 'Recipe #4521',
-    details: 'Removed recipe "Spam Content" due to multiple reports',
-    severity: 'high',
-  },
-  {
-    id: 2,
-    timestamp: '2026-04-16 13:18:42',
-    admin: 'moderator@recipeshare.com',
-    action: 'Approved Post',
-    target: 'Recipe #4519',
-    details: 'Approved flagged recipe after review - false positive',
-    severity: 'low',
-  },
-  {
-    id: 3,
-    timestamp: '2026-04-16 12:05:33',
-    admin: 'admin@recipeshare.com',
-    action: 'Banned User',
-    target: 'User: spambot99',
-    details: 'Permanently banned user for spam activity',
-    severity: 'high',
-  },
-  {
-    id: 4,
-    timestamp: '2026-04-16 11:47:21',
-    admin: 'moderator@recipeshare.com',
-    action: 'Updated Settings',
-    target: 'Platform Settings',
-    details: 'Modified content moderation thresholds',
-    severity: 'medium',
-  },
-  {
-    id: 5,
-    timestamp: '2026-04-16 10:23:18',
-    admin: 'admin@recipeshare.com',
-    action: 'Created Badge',
-    target: 'Badge: Rising Star',
-    details: 'Created new achievement badge for users',
-    severity: 'low',
-  },
-  {
-    id: 6,
-    timestamp: '2026-04-16 09:15:44',
-    admin: 'moderator@recipeshare.com',
-    action: 'Deleted Comment',
-    target: 'Comment #8932',
-    details: 'Removed inappropriate comment from recipe discussion',
-    severity: 'medium',
-  },
-  {
-    id: 7,
-    timestamp: '2026-04-15 18:42:09',
-    admin: 'admin@recipeshare.com',
-    action: 'Updated User Role',
-    target: 'User: sarah.johnson',
-    details: 'Granted KOL (Key Opinion Leader) status',
-    severity: 'medium',
-  },
-  {
-    id: 8,
-    timestamp: '2026-04-15 16:28:33',
-    admin: 'moderator@recipeshare.com',
-    action: 'Approved Recipe',
-    target: 'Recipe #4502',
-    details: 'Manually approved recipe after automated review',
-    severity: 'low',
-  },
-  {
-    id: 9,
-    timestamp: '2026-04-15 14:11:52',
-    admin: 'admin@recipeshare.com',
-    action: 'System Configuration',
-    target: 'AI Settings',
-    details: 'Updated AI moderation sensitivity parameters',
-    severity: 'high',
-  },
-  {
-    id: 10,
-    timestamp: '2026-04-15 11:05:27',
-    admin: 'moderator@recipeshare.com',
-    action: 'Deleted Recipe',
-    target: 'Recipe #4478',
-    details: 'Removed duplicate recipe post',
-    severity: 'low',
-  },
-];
-
 export default function AuditLogsPage() {
-  const [logs] = useState(auditLogs);
+  // 1. Khởi tạo state rỗng thay vì dùng dữ liệu giả
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
+
+  // 2. Gọi API để lấy dữ liệu thực tế từ Backend
+  useEffect(() => {
+    fetch('http://localhost:3000/api/admin/audit-logs')
+      .then(res => res.json())
+      .then(data => {
+        setLogs(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Lỗi kết nối API Audit Logs:", err);
+        setLoading(false);
+      });
+  }, []);
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
@@ -146,6 +70,11 @@ export default function AuditLogsPage() {
     // In production, this would generate and download a CSV file
     console.log('Exporting logs...', filteredLogs);
   };
+
+  // Hiển thị trạng thái đang tải
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-500">Đang tải dữ liệu Audit Logs...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -262,7 +191,8 @@ export default function AuditLogsPage() {
                   return (
                     <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {log.timestamp}
+                        {/* Format lại ngày giờ từ SQL cho đẹp */}
+                        {new Date(log.timestamp).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{log.admin}</div>

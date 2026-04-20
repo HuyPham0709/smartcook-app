@@ -1,20 +1,23 @@
 const express = require('express');
+const cors = require('cors'); // Phải có thư viện này
 
-// Import routes
+// Import các routes
 const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require('./routes/adminRoutes'); // Import adminRoutes bạn vừa tạo
 
 const app = express();
-app.use(express.json());
 
-// Thêm CORS để Frontend (React) ở port khác có thể gọi API được
-const cors = require('cors');
+// 1. Cấu hình CORS để cho phép Frontend (React) gọi API
 app.use(cors());
 
-// Gắn route vào app
-// Chú ý: Đổi '/users' thành '/recipes' để Frontend lấy được dữ liệu trang chủ
-app.use('/recipes', userRoutes);
+// 2. Middleware để đọc dữ liệu JSON
+app.use(express.json());
 
+// 3. Đăng ký các API Routes
+app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+// 4. Khởi động server
 const PORT = 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);
+    console.log(`🚀 Server Backend đang chạy tại http://localhost:${PORT}`);
 });
