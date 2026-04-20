@@ -11,6 +11,8 @@ import ProfilePage from "./pages/public/ProfilePage";
 import AdminDashBoardPage from "./pages/admin/AdminDashBoardPage";
 import ModerationPage from "./pages/admin/ModerationPage";
 import AuditLogsPage from "./pages/admin/AuditLogsPage";
+import { BrowserRouter } from "react-router-dom";
+import AppRoutes from "./routes";
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
 
         </Route>
       </Routes>
+      {/* Bạn có thể thêm các Provider khác ở đây trong tương lai */}
+      <AppRoutes />
     </BrowserRouter>
   );
 }
