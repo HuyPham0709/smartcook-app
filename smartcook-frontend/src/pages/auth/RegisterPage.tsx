@@ -105,6 +105,7 @@ export default function RegisterPage() {
               <input
                 type="checkbox"
                 className="w-4 h-4 mt-1 rounded border-gray-300"
+                aria-label="Agree to terms of service and privacy policy"
                 style={{ accentColor: 'var(--green-medium)' }}
                 required
               />

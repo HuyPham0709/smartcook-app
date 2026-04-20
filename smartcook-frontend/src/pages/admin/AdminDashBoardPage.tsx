@@ -83,6 +83,7 @@ export default function AdminDashboardPage() {
             value={timeRange} 
             onChange={(e) => setTimeRange(e.target.value)}
             className="px-4 py-2.5 bg-white border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:border-[var(--orange)] transition-colors cursor-pointer"
+            aria-label="Select time range for dashboard data"
           >
             <option value="1d">Today</option>
             <option value="7d">Last 7 days</option>
