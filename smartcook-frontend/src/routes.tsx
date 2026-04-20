@@ -9,12 +9,11 @@ import NotFound from './pages/core/NotFound';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 
-// Pages: Recipes
+// Pages: Recipe
 import RecipeDetailsPage from './pages/recipe/RecipeDetailsPage';
-// Tạm thời comment nếu bạn chưa sẵn sàng dùng, nhưng hãy tổ chức rõ ràng
-// import { CreateRecipePage } from './pages/recipe/CreateRecipePage';
-// import { CookingModePage } from './pages/recipe/CookingModePage';
-// import { FridgeCreativesPage } from './pages/recipe/FridgeCreativesPage';
+import CreateRecipePage from './pages/recipe/CreateRecipePage';
+import CookingModePage from './pages/recipe/CookingModePage';
+import FridgeCreativesPage from './pages/recipe/FridgeCreativesPage';
 
 // Pages: Admin
 import AdminDashboardPage from './pages/admin/AdminDashBoardPage';
@@ -38,10 +37,10 @@ const AppRoutes = () => {
         
         {/* Recipes */}
         <Route path="/recipe/:recipeId" element={<RecipeDetailsPage />} />
-        {/* <Route path="/create" element={<CreateRecipePage />} />
+        <Route path="/create" element={<CreateRecipePage />} />
           <Route path="/cooking-mode/:recipeId" element={<CookingModePage />} />
           <Route path="/fridge-creatives" element={<FridgeCreativesPage />} /> 
-        */}
+       
 
         {/* User */}
         <Route path="/profile/:userId" element={<ProfilePage />} />
@@ -49,7 +48,7 @@ const AppRoutes = () => {
         {/* Admin Section */}
         <Route path="/admin">
           <Route index element={<AdminDashboardPage />} />
-          <Route path="audit-logs" element={<AuditLogsPage />} />
+          <Route path="logs" element={<AuditLogsPage />} />
           <Route path="moderation" element={<ModerationPage />} />
         </Route>
       </Route>

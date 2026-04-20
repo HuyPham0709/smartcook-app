@@ -161,6 +161,7 @@ export default function ModerationPage() {
                       <input 
                         type="checkbox" 
                         className="w-5 h-5 cursor-pointer accent-[var(--orange)] rounded"
+                        aria-label={`Select post ${post.recipeTitle} for bulk action`}
                         checked={selectedPosts.includes(post.id)}
                         onChange={() => toggleSelectOne(post.id)}
                       />
@@ -281,6 +282,7 @@ export default function ModerationPage() {
                     <span className="text-sm font-medium text-gray-700 block mb-1">Khóa tài khoản (Ban):</span>
                     <select 
                       className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white"
+                      aria-label="Select ban duration for the user"
                       value={penalty.banDays}
                       onChange={(e) => setPenalty({...penalty, banDays: parseInt(e.target.value)})}
                     >
