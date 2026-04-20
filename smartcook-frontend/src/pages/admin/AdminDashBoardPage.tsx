@@ -4,6 +4,9 @@ import { Users, FileText, TrendingUp, AlertCircle, Eye, Heart, MessageCircle } f
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function AdminDashboardPage() {
+  // 1. Thêm State để lưu khoảng thời gian lọc (Mặc định 30 ngày)
+  const [timeRange, setTimeRange] = useState('30d');
+
   // State lưu trữ dữ liệu từ API bao gồm cả data cho 2 biểu đồ
   const [data, setData] = useState<any>({
     stats: { totalUsers: 0, totalRecipes: 0, activeUsers: 0, flaggedPosts: 0 },
@@ -13,9 +16,11 @@ export default function AdminDashboardPage() {
   });
   const [loading, setLoading] = useState(true);
 
+  // 2. Thêm timeRange vào dependency array và query string
   useEffect(() => {
-    // Gọi API lấy dữ liệu thực tế từ SQL Server
-    fetch('http://localhost:3000/api/admin/dashboard')
+    setLoading(true);
+    // Gọi API lấy dữ liệu thực tế từ SQL Server kèm theo bộ lọc
+    fetch(`http://localhost:3000/api/admin/dashboard?range=${timeRange}`)
       .then(res => res.json())
       .then(json => {
         setData(json);
@@ -25,14 +30,39 @@ export default function AdminDashboardPage() {
         console.error("Lỗi kết nối API Dashboard:", err);
         setLoading(false);
       });
-  }, []);
+  }, [timeRange]);
 
-  // Map lại dữ liệu vào mảng stats để render UI (Đã xóa bỏ số hardcode '1,832')
+  // 3. Map lại dữ liệu: Dùng fallback (??) để code không bị lỗi gãy UI 
+  // nếu Backend trả về cấu trúc mới (chứa value & change) hoặc vẫn giữ cấu trúc cũ (chỉ có số)
   const statsDisplay = [
-    { title: 'Total Users', value: (data.stats?.totalUsers || 0).toLocaleString(), change: '+0%', icon: Users, color: '#7CBD92' },
-    { title: 'Total Recipes', value: (data.stats?.totalRecipes || 0).toLocaleString(), change: '+0%', icon: FileText, color: '#FF8C42' },
-    { title: 'Active Users (24h)', value: (data.stats?.activeUsers || 0).toLocaleString(), change: '+0%', icon: TrendingUp, color: '#3B82F6' },
-    { title: 'Flagged Posts', value: (data.stats?.flaggedPosts || 0).toString(), change: '0%', icon: AlertCircle, color: '#EF4444' },
+    { 
+      title: 'Total Users', 
+      value: (data.stats?.totalUsers?.value ?? data.stats?.totalUsers ?? 0).toLocaleString(), 
+      change: data.stats?.totalUsers?.change || '+0%', 
+      icon: Users, 
+      color: '#7CBD92' 
+    },
+    { 
+      title: 'Total Recipes', 
+      value: (data.stats?.totalRecipes?.value ?? data.stats?.totalRecipes ?? 0).toLocaleString(), 
+      change: data.stats?.totalRecipes?.change || '+0%', 
+      icon: FileText, 
+      color: '#FF8C42' 
+    },
+    { 
+      title: 'Active Users', 
+      value: (data.stats?.activeUsers?.value ?? data.stats?.activeUsers ?? 0).toLocaleString(), 
+      change: data.stats?.activeUsers?.change || '+0%', 
+      icon: TrendingUp, 
+      color: '#3B82F6' 
+    },
+    { 
+      title: 'Flagged Posts', 
+      value: (data.stats?.flaggedPosts?.value ?? data.stats?.flaggedPosts ?? 0).toString(), 
+      change: data.stats?.flaggedPosts?.change || '0%', 
+      icon: AlertCircle, 
+      color: '#EF4444' 
+    },
   ];
 
   if (loading) return <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center text-xl">Đang tải dữ liệu Dashboard...</div>;
@@ -40,10 +70,25 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Platform overview and analytics</p>
+        
+        {/* Header - Thêm thẻ div bọc ngoài để chứa Dropdown */}
+        <div className="mb-8 flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+            <p className="text-gray-600">Platform overview and analytics</p>
+          </div>
+          
+          {/* Dropdown Lọc Thời Gian (CSS được mượn từ nút bấm của bạn ở dưới) */}
+          <select
+            value={timeRange} 
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="px-4 py-2.5 bg-white border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:border-[var(--orange)] transition-colors cursor-pointer"
+          >
+            <option value="1d">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="1y">This year</option>
+          </select>
         </div>
 
         {/* Quick Links */}
@@ -75,6 +120,7 @@ export default function AdminDashboardPage() {
                   >
                     <Icon className="w-6 h-6" style={{ color: stat.color }} />
                   </div>
+                  {/* GIỮ NGUYÊN CSS LOGIC MÀU SẮC CỦA BẠN */}
                   <span
                     className={`text-sm font-medium px-2 py-1 rounded ${
                       stat.change.startsWith('+') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'

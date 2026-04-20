@@ -214,6 +214,12 @@ CREATE INDEX IX_Ingredient_Name ON Ingredients(Name);
 CREATE INDEX IX_Noti_User_Unread ON Notifications(UserID, IsRead);
 GO
 
+-- Thêm cột lưu số lần bị cảnh cáo
+ALTER TABLE Users ADD WarningCount INT DEFAULT 0;
+
+-- Thêm cột lưu thời hạn khóa tài khoản (Null = Không khóa)
+ALTER TABLE Users ADD BanUntil DATETIMEOFFSET NULL;
+
 -- 9. DỮ LIỆU MẪU CHO ROLE
 INSERT INTO Roles (RoleName, Description) VALUES 
 ('Admin', 'Toàn quyền hệ thống'),
