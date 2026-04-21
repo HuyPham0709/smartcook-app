@@ -6,9 +6,10 @@ interface HeaderProps {
   isLoggedIn: boolean;
   currentUser: any;
   onOpenLoginModal: () => void;
+  onLogout: () => void;
 }
 
-export default function Header({ isLoggedIn, currentUser, onOpenLoginModal }: HeaderProps) {
+export default function Header({ isLoggedIn, currentUser, onOpenLoginModal, onLogout }: HeaderProps) {
   
   // Hàm xử lý khi click vào nút Create Recipe
   const handleCreateClick = (e: React.MouseEvent) => {
@@ -54,8 +55,9 @@ export default function Header({ isLoggedIn, currentUser, onOpenLoginModal }: He
           </Link>
 
           {/* User Auth */}
+          {/* ĐÃ SỬA: Đưa comment ra ngoài khối toán tử 3 ngôi để tránh lỗi JSX */}
           {isLoggedIn ? (
-            <AvatarDropdown user={currentUser} />
+            <AvatarDropdown user={currentUser} onLogout={onLogout} />
           ) : (
             <Link
               to="/login"

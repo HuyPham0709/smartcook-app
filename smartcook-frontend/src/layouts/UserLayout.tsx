@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Outlet, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Outlet, Link, useLocation } from "react-router-dom"; // Thêm useLocation
 import { X } from "lucide-react";
 import UserSidebar from "./UserSidebar";
 import Header from "./Header"; 
@@ -13,36 +13,59 @@ const currentUser = {
 
 export default function UserLayout() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isLoggedIn] = useState(true); 
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const location = useLocation(); // Hook lấy đường dẫn hiện tại
+
+  // LOGIC MỚI: Kiểm tra token để xác định trạng thái đăng nhập
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return !!localStorage.getItem("accessToken");
+  });
+
+  // ĐÃ THÊM: Theo dõi mỗi khi URL đổi (ví dụ chuyển từ trang Login sang trang chủ)
+  // để cập nhật lại biến isLoggedIn lập tức.
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const token = localStorage.getItem("accessToken");
+      setIsLoggedIn(!!token);
+    };
+    
+    // Gọi kiểm tra mỗi khi chuyển route
+    checkAuthStatus();
+    
+    // Lắng nghe thêm sự kiện thay đổi localStorage từ tab khác (nếu có)
+    window.addEventListener('storage', checkAuthStatus);
+    return () => {
+      window.removeEventListener('storage', checkAuthStatus);
+    };
+  }, [location.pathname]);
+
+  // LOGIC MỚI: Hàm logout thực thụ
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("temp_user_id"); // Xóa luôn các dữ liệu tạm nếu có
+    setIsLoggedIn(false);
+    window.location.href = "/"; // Reset lại trang để xóa sạch state cũ
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar cố định bên trái */}
       <UserSidebar 
         isExpanded={isExpanded} 
         setIsExpanded={setIsExpanded} 
         isLoggedIn={isLoggedIn} 
       />
 
-      {/* Vùng nội dung chính: ml thay đổi linh hoạt để không bị vỡ layout */}
-      <div 
-        className={`flex flex-col min-h-screen flex-1 transition-all duration-300 ease-in-out ${
-          isExpanded ? "ml-72" : "ml-20"
-        }`}
-      >
-        {/* Header đã được tách ra */}
+      <div className={`flex flex-col min-h-screen flex-1 transition-all duration-300 ease-in-out ${isExpanded ? "ml-72" : "ml-20"}`}>
         <Header 
           isLoggedIn={isLoggedIn} 
           currentUser={currentUser} 
           onOpenLoginModal={() => setShowLoginModal(true)} 
+          onLogout={handleLogout} // TRUYỀN HÀM LOGOUT XUỐNG
         />
 
-        {/* Nội dung trang */}
         <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
           <Outlet />
         </main>
-
         <Footer />
       </div>
 

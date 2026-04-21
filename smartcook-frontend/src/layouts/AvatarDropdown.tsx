@@ -9,9 +9,10 @@ interface AvatarDropdownProps {
     email: string;
     avatar: string;
   };
+  onLogout: () => void;
 }
 
-export default function AvatarDropdown({ user }: AvatarDropdownProps) {
+export default function AvatarDropdown({ user, onLogout }: AvatarDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -101,8 +102,8 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
             <button
               onClick={() => {
                 setIsOpen(false);
-                // Add logout logic here
-                console.log('Logging out...');
+                // ĐÃ SỬA: Gọi hàm onLogout thay vì chỉ console.log
+                onLogout();
               }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 transition-colors group"
             >

@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts
 import UserLayout from './layouts/UserLayout';
-import AdminLayout from './layouts/AdminLayout';
+// import AdminLayout from './layouts/AdminLayout';
 
 // Pages: Core & Auth
 import HomePage from './pages/core/HomePage';
@@ -57,16 +57,6 @@ const AppRoutes = () => {
         </Route>
       </Route>
 
-      {/* --- PROTECTED/PRIVATE ROUTES (With Layout-v2) --- */}
-      <Route element={<AdminLayout />}>
-        {/* Admin Section */}
-        <Route path="/admin">
-          <Route index element={<AdminDashboardPage />} />
-          <Route path="logs" element={<AuditLogsPage />} />
-          <Route path="moderation" element={<ModerationPage />} />
-          <Route path="users" element={<UserManagementPage />} /> {/* <-- ĐÃ THÊM ROUTE */}
-        </Route>
-      </Route>
 
       {/* --- ERROR ROUTES --- */}
       <Route path="/error404" element={<NotFound />} />
