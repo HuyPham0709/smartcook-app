@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { Award, BookMarked, ChefHat, CheckCircle, Users, Heart } from 'lucide-react';
 import  RecipeCard  from '../../components/RecipeCard';
 
