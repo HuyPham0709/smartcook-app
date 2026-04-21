@@ -1,7 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts
-import Layout from './layouts/Layout';
+import UserLayout from './layouts/UserLayout';
+import AdminLayout from './layouts/AdminLayout';
 
 // Pages: Core & Auth
 import HomePage from './pages/core/HomePage';
@@ -21,7 +22,8 @@ import AuditLogsPage from './pages/admin/AuditLogsPage';
 import ModerationPage from './pages/admin/ModerationPage';
 
 // Pages: User
-import ProfilePage from './pages/User/ProfilePage';
+import ProfilePage from './pages/user/ProfilePage';
+import SessionManagementPage from './pages/user/SessionManagementPage';
 
 const AppRoutes = () => {
   return (
@@ -31,7 +33,7 @@ const AppRoutes = () => {
       <Route path="/register" element={<RegisterPage />} />
 
       {/* --- PROTECTED/PRIVATE ROUTES (With Layout) --- */}
-      <Route element={<Layout />}>
+      <Route element={<UserLayout />}>
         {/* Core */}
         <Route path="/" element={<HomePage />} />
         
@@ -43,8 +45,20 @@ const AppRoutes = () => {
        
 
         {/* User */}
-        <Route path="/profile/:userId" element={<ProfilePage />} />
+        <Route path="user/profile/:userId" element={<ProfilePage />} />
+        {/* Settings */}
+        <Route path="user/settings/sessions" element={<SessionManagementPage />} />
 
+        {/* Admin Section */}
+        <Route path="/admin">
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="audit-logs" element={<AuditLogsPage />} />
+          <Route path="moderation" element={<ModerationPage />} />
+        </Route>
+      </Route>
+
+      {/* --- PROTECTED/PRIVATE ROUTES (With Layout-v2) --- */}
+      <Route element={<AdminLayout />}>
         {/* Admin Section */}
         <Route path="/admin">
           <Route index element={<AdminDashboardPage />} />
