@@ -1,44 +1,51 @@
 import { useState, useEffect } from 'react';
 import { FileText, Search, Filter, Download, User, Settings, Trash2, Shield } from 'lucide-react';
-
-interface AuditLog {
-  id: number;
-  timestamp: string;
-  admin: string;
-  action: string;
-  target: string;
-  details: string;
-  severity: 'low' | 'medium' | 'high';
-}
+import { adminApi } from '../../api/adminApi';
+import { AuditLog } from '../../types';
 
 export default function AuditLogsPage() {
-  // 1. Khởi tạo state rỗng thay vì dùng dữ liệu giả
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
 
-  // 2. Gọi API để lấy dữ liệu thực tế từ Backend
   useEffect(() => {
-    fetch('http://localhost:3000/api/admin/audit-logs')
-      .then(res => res.json())
-      .then(data => {
-        setLogs(data);
-        setLoading(false);
+    adminApi.getAuditLogs()
+      .then((response: any) => {
+        // 1. Xử lý trường hợp backend bọc data trong recordset (đặc thù của thư viện mssql)
+        let rawData = response.recordset ? response.recordset : response;
+        if (!Array.isArray(rawData)) rawData = [];
+
+        // 2. Map lại dữ liệu: Tự động bắt đúng tên cột của DB SQL server sang Frontend
+        const formattedLogs = rawData.map((item: any) => ({
+          id: item.id || item.ID || 0,
+          timestamp: item.timestamp || item.CreatedAt || new Date().toISOString(),
+          // Bắt cả trường hợp tên cột là AdminName, AdminID hoặc admin
+          admin: item.admin || item.AdminName || `Admin #${item.AdminID}` || 'Unknown Admin',
+          action: item.action || item.Action || 'N/A',
+          // Ép kiểu về chuỗi (String) để tránh lỗi khi DB trả về số (TargetID)
+          target: String(item.target || item.TargetName || item.TargetID || 'N/A'),
+          details: item.details || item.ActionDetails || item.Details || '',
+          severity: item.severity || 'medium'
+        }));
+
+        setLogs(formattedLogs);
       })
-      .catch(err => {
-        console.error("Lỗi kết nối API Audit Logs:", err);
-        setLoading(false);
-      });
+      .catch((err: any) => {
+        console.error("Lỗi kết nối API Audit Logs:", err.message);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
+  // 3. Hàm tìm kiếm an toàn: Đã thêm (?? "") để nếu dữ liệu bị null cũng KHÔNG bị crash sập trang
   const filteredLogs = logs.filter((log) => {
+    const searchStr = searchQuery.toLowerCase();
     const matchesSearch =
-      log.admin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchQuery.toLowerCase());
+      (log.admin ?? "").toLowerCase().includes(searchStr) ||
+      (log.action ?? "").toLowerCase().includes(searchStr) ||
+      (log.target ?? "").toLowerCase().includes(searchStr) ||
+      (log.details ?? "").toLowerCase().includes(searchStr);
 
     const matchesSeverity = selectedSeverity === 'all' || log.severity === selectedSeverity;
 
@@ -47,18 +54,15 @@ export default function AuditLogsPage() {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high':
-        return 'bg-red-100 text-red-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'low':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getActionIcon = (action: string) => {
+    if (!action) return FileText;
     if (action.includes('Delete')) return Trash2;
     if (action.includes('User') || action.includes('Banned')) return User;
     if (action.includes('Settings') || action.includes('Configuration')) return Settings;
@@ -67,11 +71,9 @@ export default function AuditLogsPage() {
   };
 
   const exportLogs = () => {
-    // In production, this would generate and download a CSV file
     console.log('Exporting logs...', filteredLogs);
   };
 
-  // Hiển thị trạng thái đang tải
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-500">Đang tải dữ liệu Audit Logs...</div>;
   }

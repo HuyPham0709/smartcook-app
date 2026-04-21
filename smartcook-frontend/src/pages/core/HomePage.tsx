@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, TrendingUp } from "lucide-react";
 import RecipeCard from "../../components/RecipeCard";
 import TrendingKeywords from "../../components/TrendingKeywords";
+import { publicApi } from "../../api/publicApi"; // THÊM IMPORT NÀY
 
 interface Recipe {
   id: number;
@@ -18,37 +19,19 @@ interface Recipe {
   remixes: number;
 }
 
-const categories = [
-  "Vegan",
-  "Under 30 mins",
-  "Keto",
-  "Gluten-Free",
-  "High Protein",
-  "Desserts",
-  "Breakfast",
-  "Quick & Easy",
-  "Meal Prep",
-  "Healthy",
-];
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // 1. Thêm state để chứa dữ liệu trả về từ API
   const [trendingRecipes, setTrendingRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 2. Sử dụng useEffect để fetch API khi trang vừa load
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        // Đã sửa đường dẫn thành /api/users để khớp với file server.js bên backend
-        const response = await fetch("http://localhost:3000/api/users");
-        if (!response.ok) {
-          throw new Error("Lỗi khi kết nối đến server");
-        }
-        const data = await response.json();
+        // Gọi API qua Axios
+        const data: any = await publicApi.getTrendingRecipes();
 
         // Đảm bảo dữ liệu trả về là mảng để không bị lỗi .map() làm sập trang
         if (Array.isArray(data)) {
@@ -56,8 +39,8 @@ export default function HomePage() {
         } else {
           setTrendingRecipes([]);
         }
-      } catch (error) {
-        console.error("Lỗi khi tải danh sách công thức:", error);
+      } catch (error: any) {
+        console.error("Lỗi khi tải danh sách công thức:", error.response?.data?.message || error.message);
       } finally {
         setIsLoading(false);
       }
@@ -68,56 +51,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Search Bar */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="relative max-w-2xl mx-auto">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search recipes, ingredients, or chefs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-full border-2 border-gray-200 focus:outline-none focus:border-[var(--green-medium)] transition-colors text-gray-700 bg-gray-50"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Category Pills */}
-      <div className="bg-white border-b border-gray-200 sticky top-[73px] z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex gap-3 min-w-max">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() =>
-                    setSelectedCategory(
-                      selectedCategory === category ? null : category,
-                    )
-                  }
-                  className="px-5 py-2 rounded-full border-2 whitespace-nowrap transition-all hover:scale-105 text-sm font-medium"
-                  style={{
-                    backgroundColor:
-                      selectedCategory === category
-                        ? "var(--green-light)"
-                        : "white",
-                    borderColor:
-                      selectedCategory === category
-                        ? "var(--green-medium)"
-                        : "#e5e7eb",
-                    color: selectedCategory === category ? "white" : "#374151",
-                  }}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Trending Keywords Section */}
       <TrendingKeywords />
 

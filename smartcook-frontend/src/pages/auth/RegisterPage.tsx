@@ -1,27 +1,53 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChefHat, Mail, Lock, User, Chrome } from 'lucide-react';
+import { authApi } from '../../api/authApi'; // THÊM DÒNG IMPORT NÀY
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  const [error, setError] = useState(''); 
+  const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    // 1. Kiểm tra mật khẩu khớp nhau ở Frontend
     if (password !== confirmPassword) {
-      alert('Passwords do not match!');
+      setError('Mật khẩu xác nhận không khớp!');
       return;
     }
-    // Mock registration - in production, this would create account with backend
-    navigate('/settings/2fa'); // Redirect to 2FA setup after registration
-  };
 
+    setIsLoading(true);
+
+    try {
+      // 2. Gọi API tối ưu bằng authApi (Axios)
+      await authApi.register({ 
+        fullName: name, 
+        email: email, 
+        password: password 
+      });
+
+      // 3. Xử lý sau khi đăng ký thành công
+      alert('Đăng ký tài khoản thành công!');
+      navigate('/login'); 
+
+    } catch (err: any) {
+      // Bắt lỗi từ server gửi về (Axios tự động ném lỗi vào err.response.data)
+      setError(err.response?.data?.message || err.message || 'Đăng ký thất bại. Vui lòng thử lại!');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const handleGoogleSignup = () => {
-    // Mock Google OAuth - in production, this would use Supabase OAuth
-    navigate('/settings/2fa');
+    // Chuyển hướng tới endpoint xử lý Google OAuth trên backend
+    window.location.href = '/api/auth/google';
   };
 
   return (
@@ -40,6 +66,14 @@ export default function RegisterPage() {
 
         {/* Registration Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          
+          {/* Vùng hiển thị thông báo lỗi */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-500 text-sm rounded-lg text-center font-medium">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleRegister} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -49,6 +83,7 @@ export default function RegisterPage() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  disabled={isLoading}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent"
                   placeholder="John Doe"
                   required
@@ -64,6 +99,7 @@ export default function RegisterPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent"
                   placeholder="your@email.com"
                   required
@@ -79,6 +115,7 @@ export default function RegisterPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent"
                   placeholder="••••••••"
                   required
@@ -94,6 +131,7 @@ export default function RegisterPage() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent"
                   placeholder="••••••••"
                   required
@@ -123,10 +161,11 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
+              disabled={isLoading}
+              className={`w-full py-3 rounded-lg text-white font-medium transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}
               style={{ backgroundColor: 'var(--orange)' }}
             >
-              Create Account
+              {isLoading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 
@@ -141,6 +180,7 @@ export default function RegisterPage() {
 
           <button
             onClick={handleGoogleSignup}
+            type="button"
             className="w-full py-3 border-2 border-gray-300 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
           >
             <Chrome className="w-5 h-5 text-blue-600" />

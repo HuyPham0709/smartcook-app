@@ -1,21 +1,43 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChefHat, Mail, Lock, Chrome } from 'lucide-react';
+import { authApi } from '../../api/authApi';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState(''); 
+  const [isLoading, setIsLoading] = useState(false); 
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login - in production, this would authenticate with backend
-    navigate('/');
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Gọi API tối ưu bằng authApi (Axios)
+      const data: any = await authApi.login({ email, password });
+
+      // Xử lý luồng 2FA
+      if (data.requires2FA) {
+        localStorage.setItem('temp_user_id', data.userId);
+        navigate('/verify-2fa'); 
+      } else {
+        localStorage.setItem('accessToken', data.accessToken);
+        navigate('/');
+      }
+    } catch (err: any) {
+      // Bắt lỗi từ server gửi về (VD: Sai mật khẩu, không tìm thấy user)
+      setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
-    // Mock Google OAuth - in production, this would use Supabase OAuth
-    navigate('/');
+    // Chuyển hướng tới endpoint xử lý Google OAuth trên backend
+    window.location.href = '/api/users/auth/google';
   };
 
   return (
@@ -34,6 +56,13 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Hiển thị lỗi nếu có */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-500 text-sm rounded-lg text-center">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
@@ -46,6 +75,7 @@ export default function LoginPage() {
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent"
                   placeholder="your@email.com"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -61,6 +91,7 @@ export default function LoginPage() {
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent"
                   placeholder="••••••••"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -75,10 +106,11 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
+              disabled={isLoading}
+              className={`w-full py-3 rounded-lg text-white font-medium transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}
               style={{ backgroundColor: 'var(--orange)' }}
             >
-              Sign In
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
@@ -93,6 +125,7 @@ export default function LoginPage() {
 
           <button
             onClick={handleGoogleLogin}
+            type="button"
             className="w-full py-3 border-2 border-gray-300 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
           >
             <Chrome className="w-5 h-5 text-blue-600" />
