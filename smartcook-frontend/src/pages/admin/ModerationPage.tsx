@@ -1,27 +1,14 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, Eye, Flag, ShieldAlert } from 'lucide-react';
-
-interface FlaggedPost {
-  id: number;
-  recipeTitle: string;
-  recipeImage: string;
-  author: string;
-  authorId: number;
-  flaggedBy: string;
-  source: 'AI' | 'User'; 
-  reason: string;
-  flaggedAt: string;
-  description: string;
-}
+import { adminApi } from '../../api/adminApi'; // THÊM IMPORT NÀY
+import { FlaggedPost, User } from '../../types';
 
 export default function ModerationPage() {
   const [posts, setPosts] = useState<FlaggedPost[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // State cho Bulk Actions (Lưu trữ các ID đang được chọn)
   const [selectedPosts, setSelectedPosts] = useState<number[]>([]);
 
-  // State cho Modal Xóa & Cảnh cáo
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     action: 'approve' | 'delete' | null;
@@ -29,21 +16,19 @@ export default function ModerationPage() {
     authorId: number | null;
   }>({ isOpen: false, action: null, postId: null, authorId: null });
 
-  // State cho tuỳ chọn xử phạt trong Modal
   const [penalty, setPenalty] = useState({ warn: false, banDays: 0 });
 
-  // GỌI API THỰC TẾ TỪ NODEJS
   const fetchPosts = () => {
     setLoading(true);
-    fetch('http://localhost:3000/api/admin/moderation')
-      .then(res => res.json())
-      .then(data => {
+    // Gọi API lấy danh sách qua Axios
+    adminApi.getModerationPosts()
+      .then((data: any) => {
         setPosts(data);
-        setSelectedPosts([]); // Reset selection khi load lại
+        setSelectedPosts([]); 
         setLoading(false);
       })
-      .catch(err => {
-        console.error("Lỗi kết nối API Moderation:", err);
+      .catch((err: any) => {
+        console.error("Lỗi kết nối API Moderation:", err.message);
         setLoading(false);
       });
   };
@@ -55,37 +40,34 @@ export default function ModerationPage() {
     setPenalty({ warn: false, banDays: 0 }); 
   };
 
-  // GỌI API THỰC TẾ ĐỂ XỬ LÝ
   const executeAction = () => {
-    fetch('http://localhost:3000/api/admin/moderation/action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        reportId: confirmModal.postId,
-        action: confirmModal.action,
-        authorId: confirmModal.authorId,
-        warnUser: penalty.warn,
-        banUserDays: penalty.banDays,
-        adminId: 1 // Giả lập Admin ID
-      })
+    // Gọi API xử lý 1 Report qua Axios
+    adminApi.handleModerationAction({
+      reportId: confirmModal.postId,
+      action: confirmModal.action,
+      authorId: confirmModal.authorId,
+      warnUser: penalty.warn,
+      banUserDays: penalty.banDays,
+      adminId: 1 // Giả lập Admin ID
     })
     .then(() => {
       setConfirmModal({ isOpen: false, action: null, postId: null, authorId: null });
-      fetchPosts(); // Load lại data từ DB sau khi xử lý
+      fetchPosts(); 
     })
-    .catch(err => console.error("Lỗi xử lý:", err));
+    .catch((err: any) => console.error("Lỗi xử lý:", err.response?.data?.message || err.message));
   };
 
   const executeBulkAction = (action: 'approve' | 'delete') => {
     if (selectedPosts.length === 0) return alert("Vui lòng chọn ít nhất 1 báo cáo!");
     
-    fetch('http://localhost:3000/api/admin/moderation/bulk', { 
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reportIds: selectedPosts, action, adminId: 1 })
+    // Gọi API xử lý Bulk Report qua Axios
+    adminApi.handleBulkModeration({ 
+      reportIds: selectedPosts, 
+      action, 
+      adminId: 1 
     })
     .then(() => fetchPosts())
-    .catch(err => console.error("Lỗi xử lý hàng loạt:", err));
+    .catch((err: any) => console.error("Lỗi xử lý hàng loạt:", err.message));
   };
 
   const toggleSelectOne = (id: number) => {
@@ -161,6 +143,7 @@ export default function ModerationPage() {
                       <input 
                         type="checkbox" 
                         className="w-5 h-5 cursor-pointer accent-[var(--orange)] rounded"
+                        aria-label={`Select post ${post.recipeTitle} for bulk action`}
                         checked={selectedPosts.includes(post.id)}
                         onChange={() => toggleSelectOne(post.id)}
                       />
@@ -281,6 +264,7 @@ export default function ModerationPage() {
                     <span className="text-sm font-medium text-gray-700 block mb-1">Khóa tài khoản (Ban):</span>
                     <select 
                       className="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white"
+                      aria-label="Select ban duration for the user"
                       value={penalty.banDays}
                       onChange={(e) => setPenalty({...penalty, banDays: parseInt(e.target.value)})}
                     >

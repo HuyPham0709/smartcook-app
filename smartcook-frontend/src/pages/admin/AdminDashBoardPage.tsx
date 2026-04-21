@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, FileText, TrendingUp, AlertCircle, Eye, Heart, MessageCircle } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { adminApi } from '../../api/adminApi'; // THÊM IMPORT NÀY
 
 export default function AdminDashboardPage() {
-  // 1. Thêm State để lưu khoảng thời gian lọc (Mặc định 30 ngày)
   const [timeRange, setTimeRange] = useState('30d');
 
-  // State lưu trữ dữ liệu từ API bao gồm cả data cho 2 biểu đồ
   const [data, setData] = useState<any>({
     stats: { totalUsers: 0, totalRecipes: 0, activeUsers: 0, flaggedPosts: 0 },
     topRecipes: [],
@@ -16,52 +15,43 @@ export default function AdminDashboardPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  // 2. Thêm timeRange vào dependency array và query string
   useEffect(() => {
     setLoading(true);
-    // Gọi API lấy dữ liệu thực tế từ SQL Server kèm theo bộ lọc
-    fetch(`http://localhost:3000/api/admin/dashboard?range=${timeRange}`)
-      .then(res => res.json())
-      .then(json => {
+    adminApi.getDashboardStats(timeRange)
+      .then((json: any) => {
         setData(json);
         setLoading(false);
       })
-      .catch(err => {
-        console.error("Lỗi kết nối API Dashboard:", err);
+      .catch((err: any) => {
+        console.error("Lỗi kết nối API Dashboard:", err.response?.data?.message || err.message);
         setLoading(false);
       });
   }, [timeRange]);
 
-  // 3. Map lại dữ liệu: Dùng fallback (??) để code không bị lỗi gãy UI 
-  // nếu Backend trả về cấu trúc mới (chứa value & change) hoặc vẫn giữ cấu trúc cũ (chỉ có số)
   const statsDisplay = [
     { 
       title: 'Total Users', 
       value: (data.stats?.totalUsers?.value ?? data.stats?.totalUsers ?? 0).toLocaleString(), 
       change: data.stats?.totalUsers?.change || '+0%', 
-      icon: Users, 
-      color: '#7CBD92' 
+      icon: Users, color: '#7CBD92' 
     },
     { 
       title: 'Total Recipes', 
       value: (data.stats?.totalRecipes?.value ?? data.stats?.totalRecipes ?? 0).toLocaleString(), 
       change: data.stats?.totalRecipes?.change || '+0%', 
-      icon: FileText, 
-      color: '#FF8C42' 
+      icon: FileText, color: '#FF8C42' 
     },
     { 
       title: 'Active Users', 
       value: (data.stats?.activeUsers?.value ?? data.stats?.activeUsers ?? 0).toLocaleString(), 
       change: data.stats?.activeUsers?.change || '+0%', 
-      icon: TrendingUp, 
-      color: '#3B82F6' 
+      icon: TrendingUp, color: '#3B82F6' 
     },
     { 
       title: 'Flagged Posts', 
       value: (data.stats?.flaggedPosts?.value ?? data.stats?.flaggedPosts ?? 0).toString(), 
       change: data.stats?.flaggedPosts?.change || '0%', 
-      icon: AlertCircle, 
-      color: '#EF4444' 
+      icon: AlertCircle, color: '#EF4444' 
     },
   ];
 
@@ -83,6 +73,7 @@ export default function AdminDashboardPage() {
             value={timeRange} 
             onChange={(e) => setTimeRange(e.target.value)}
             className="px-4 py-2.5 bg-white border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:border-[var(--orange)] transition-colors cursor-pointer"
+            aria-label="Select time range for dashboard data"
           >
             <option value="1d">Today</option>
             <option value="7d">Last 7 days</option>
@@ -92,7 +83,14 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Quick Links */}
-        <div className="flex gap-4 mb-8">
+        <div className="flex flex-wrap gap-4 mb-8">
+          <Link
+            to="/admin/users"
+            className="px-6 py-3 bg-white border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:border-blue-500 transition-colors"
+          >
+            User Management
+          </Link>
+          
           <Link
             to="/admin/moderation"
             className="px-6 py-3 bg-white border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:border-[var(--orange)] transition-colors"
@@ -100,7 +98,7 @@ export default function AdminDashboardPage() {
             Moderation Queue
           </Link>
           <Link
-            to="/admin/audit-logs"
+            to="/admin/logs"
             className="px-6 py-3 bg-white border-2 border-gray-300 rounded-lg font-medium text-gray-700 hover:border-[var(--green-medium)] transition-colors"
           >
             Audit Logs

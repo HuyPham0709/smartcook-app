@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Search, TrendingUp } from 'lucide-react';
-import  RecipeCard  from '../../components/RecipeCard';
+import { useState, useEffect } from "react";
+import { Search, TrendingUp } from "lucide-react";
+import RecipeCard from "../../components/RecipeCard";
+import TrendingKeywords from "../../components/TrendingKeywords";
+import { publicApi } from "../../api/publicApi"; // THÊM IMPORT NÀY
 
 interface Recipe {
   id: number;
@@ -18,39 +20,31 @@ interface Recipe {
 }
 
 const categories = [
-  'Vegan',
-  'Under 30 mins',
-  'Keto',
-  'Gluten-Free',
-  'High Protein',
-  'Desserts',
-  'Breakfast',
-  'Quick & Easy',
-  'Meal Prep',
-  'Healthy',
+  "Vegan", "Under 30 mins", "Keto", "Gluten-Free", "High Protein", 
+  "Desserts", "Breakfast", "Quick & Easy", "Meal Prep", "Healthy",
 ];
 
 export default function HomePage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  
-  // 1. Thêm state để chứa dữ liệu trả về từ API
+
   const [trendingRecipes, setTrendingRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 2. Sử dụng useEffect để fetch API khi trang vừa load
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        // Lưu ý: Đổi URL này thành URL API thực tế của bạn (ví dụ: lấy list recipe)
-        const response = await fetch('http://localhost:3000/recipes'); 
-        if (!response.ok) {
-          throw new Error('Lỗi khi kết nối đến server');
+        // Gọi API qua Axios
+        const data: any = await publicApi.getTrendingRecipes();
+
+        // Đảm bảo dữ liệu trả về là mảng để không bị lỗi .map() làm sập trang
+        if (Array.isArray(data)) {
+          setTrendingRecipes(data);
+        } else {
+          setTrendingRecipes([]);
         }
-        const data = await response.json();
-        setTrendingRecipes(data);
-      } catch (error) {
-        console.error("Lỗi khi tải danh sách công thức:", error);
+      } catch (error: any) {
+        console.error("Lỗi khi tải danh sách công thức:", error.response?.data?.message || error.message);
       } finally {
         setIsLoading(false);
       }
@@ -85,12 +79,22 @@ export default function HomePage() {
               {categories.map((category) => (
                 <button
                   key={category}
-                  onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
+                  onClick={() =>
+                    setSelectedCategory(
+                      selectedCategory === category ? null : category,
+                    )
+                  }
                   className="px-5 py-2 rounded-full border-2 whitespace-nowrap transition-all hover:scale-105 text-sm font-medium"
                   style={{
-                    backgroundColor: selectedCategory === category ? 'var(--green-light)' : 'white',
-                    borderColor: selectedCategory === category ? 'var(--green-medium)' : '#e5e7eb',
-                    color: selectedCategory === category ? 'white' : '#374151',
+                    backgroundColor:
+                      selectedCategory === category
+                        ? "var(--green-light)"
+                        : "white",
+                    borderColor:
+                      selectedCategory === category
+                        ? "var(--green-medium)"
+                        : "#e5e7eb",
+                    color: selectedCategory === category ? "white" : "#374151",
                   }}
                 >
                   {category}
@@ -101,11 +105,16 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Trending Keywords Section */}
+      <TrendingKeywords />
+
       {/* Trending Recipes */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center gap-2 mb-6">
-          <TrendingUp className="w-6 h-6" style={{ color: 'var(--orange)' }} />
-          <h2 className="text-2xl font-semibold text-gray-900">Trending Recipes</h2>
+          <TrendingUp className="w-6 h-6" style={{ color: "var(--orange)" }} />
+          <h2 className="text-2xl font-semibold text-gray-900">
+            Trending Recipes
+          </h2>
         </div>
 
         {/* 3. Hiển thị UI khi đang load, hoặc render danh sách nếu đã có data */}
@@ -115,7 +124,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trendingRecipes.map((recipe) => (
+            {trendingRecipes.slice(0, 6).map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
           </div>

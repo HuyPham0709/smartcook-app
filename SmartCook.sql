@@ -220,6 +220,14 @@ ALTER TABLE Users ADD WarningCount INT DEFAULT 0;
 -- Thêm cột lưu thời hạn khóa tài khoản (Null = Không khóa)
 ALTER TABLE Users ADD BanUntil DATETIMEOFFSET NULL;
 
+ALTER TABLE Users ADD BanReason NVARCHAR(500) NULL;
+
+-- Thêm cột active với giá trị mặc định là 1 (Hoạt động)
+ALTER TABLE Users ADD active INT DEFAULT 1;
+GO
+
+-- Cập nhật tất cả user cũ đang có trong DB thành 1
+UPDATE Users SET active = 1 WHERE active IS NULL;
 -- 9. DỮ LIỆU MẪU CHO ROLE
 INSERT INTO Roles (RoleName, Description) VALUES 
 ('Admin', 'Toàn quyền hệ thống'),
