@@ -13,7 +13,28 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
+  const MASTER_BADGES = [
+  { 
+    id: 1, name: 'Rising Star', icon: '⭐', 
+    description: 'Đạt trên 100 lượt thích', 
+    condition: (stats: any) => stats.totalLikes >= 100 
+  },
+  { 
+    id: 2, name: 'Recipe Master', icon: '👨‍🍳', 
+    description: 'Đã đăng trên 10 công thức', 
+    condition: (stats: any) => stats.recipes >= 10 
+  },
+  { 
+    id: 3, name: 'Community Favorite', icon: '❤️', 
+    description: 'Có trên 50 người theo dõi', 
+    condition: (stats: any) => stats.followers >= 50 
+  },
+  { 
+    id: 5, name: 'Early Adopter', icon: '🚀', 
+    description: 'Thành viên tham gia sớm', 
+    condition: () => true // Giả sử luôn hiện hoặc check theo ngày tạo
+  },
+];
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -113,7 +134,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-
       {/* Badges Section */}
       <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -123,19 +143,35 @@ export default function ProfilePage() {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {badges.map((badge) => (
-              <div
-                key={badge.id}
-                className="bg-white rounded-xl p-4 text-center shadow-md hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer"
-              >
-                <div className="text-4xl mb-2">{badge.icon}</div>
-                <h3 className="font-semibold text-gray-900 text-sm mb-1">{badge.name}</h3>
-                <p className="text-xs text-gray-600">{badge.description}</p>
-              </div>
-            ))}
-            {badges.length === 0 && (
-              <p className="text-gray-500 text-sm col-span-full">Chưa có huy hiệu nào.</p>
-            )}
+            {MASTER_BADGES.map((badge) => {
+              // Kiểm tra xem User đã đạt điều kiện chưa
+              const isAchieved = badge.condition(profile.stats);
+              
+              return (
+                <div
+                  key={badge.id}
+                  title={badge.description}
+                  className={`relative bg-white rounded-xl p-4 text-center shadow-md transition-all 
+                    ${isAchieved 
+                      ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer border-2 border-transparent' 
+                      : 'opacity-50 grayscale cursor-not-allowed border-2 border-dashed border-gray-200'
+                    }`}
+                >
+                  {!isAchieved && (
+                    <div className="absolute top-2 right-2">
+                      <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full uppercase font-bold">
+                        Locked
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-4xl mb-2">{badge.icon}</div>
+                  <h3 className={`font-semibold text-sm mb-1 ${isAchieved ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {badge.name}
+                  </h3>
+                  <p className="text-xs text-gray-500">{badge.description}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -261,6 +261,10 @@ CREATE TABLE SavedRecipes (
     CONSTRAINT FK_Saved_User FOREIGN KEY (UserID) REFERENCES Users(ID),
     CONSTRAINT FK_Saved_Recipe FOREIGN KEY (RecipeID) REFERENCES Recipes(ID) ON DELETE CASCADE
 );
+
+-- Thêm cột lưu chữ ký số vào bảng Recipes
+ALTER TABLE Recipes 
+ADD DigitalSignature NVARCHAR(MAX) NULL;
 -- 9. DỮ LIỆU MẪU CHO ROLE
 INSERT INTO Roles (RoleName, Description) VALUES 
 ('Admin', 'Toàn quyền hệ thống'),
