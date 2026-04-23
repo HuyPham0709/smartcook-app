@@ -1,8 +1,4 @@
-const { poolPromise, sql } = require('../config/db'); // THÊM 'sql' vào đây
-
-// ==========================================
-// CODE CŨ CỦA BẠN (Giữ nguyên 100% logic)
-// ==========================================
+const { poolPromise, sql } = require('../config/db'); 
 const getRecipes = async (req, res) => {
     try {
         const pool = await poolPromise;
@@ -12,9 +8,11 @@ const getRecipes = async (req, res) => {
                 r.ID as id, 
                 r.Title as title, 
                 r.ThumbnailURL as image, 
+                r.DigitalSignature as digitalSignature, -- Thêm cột này
                 CAST(r.CookingTime AS VARCHAR) + ' mins' as prepTime,
                 u.FullName as authorName, 
                 u.AvatarURL as authorAvatar, 
+                u.PublicKey as authorPublicKey,       -- Lấy khóa để verify
                 CAST(CASE WHEN u.RoleID = 4 THEN 1 ELSE 0 END AS BIT) as isKOL,
                 (SELECT COUNT(*) FROM Likes l WHERE l.RecipeID = r.ID) as likes,
                 (SELECT COUNT(*) FROM Comments c WHERE c.RecipeID = r.ID) as comments,
@@ -33,10 +31,12 @@ const getRecipes = async (req, res) => {
             likes: row.likes,
             comments: row.comments,
             remixes: row.remixes,
+            digitalSignature: row.digitalSignature, // Thêm vào object
             author: {
                 name: row.authorName,
                 avatar: row.authorAvatar,
-                isKOL: row.isKOL
+                isKOL: row.isKOL,
+                publicKey: row.authorPublicKey // Dùng cho logic tích xanh
             }
         }));
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Upload, Plus, Trash2, Sparkles } from 'lucide-react';
+import { pkiHelper } from '../../utils/pkiHelper';
 
 type Step = 1 | 2 | 3;
 
@@ -101,13 +102,50 @@ export default function CreateRecipePage() {
       reader.readAsDataURL(file);
     }
   };
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-  const handleSubmit = () => {
-    // In production, this would save to backend
-    console.log('Recipe submitted:', { title, description, ingredients, cookingSteps });
+  const handleSubmit = async () => {
+    // 1. Chuẩn bị dữ liệu bài đăng
+    const recipeBody = {
+      title,
+      description,
+      prepTime,
+      servings,
+      difficulty,
+      ingredients: ingredients.map(i => i.text),
+      cookingSteps: cookingSteps.map(s => s.text)
+    };
+
+    let digitalSignature = null;
+
+    // 2. Nếu là KOL (RoleId = 4), tiến hành ký số
+    if (currentUser.roleId === 4) {
+      try {
+        // Lấy Private Key từ nơi lưu trữ an toàn (ví dụ IndexedDB hoặc Key store của trình duyệt)
+        // Đây là ví dụ giả định bạn đã có object privateKey
+        const privateKey = await getStoredPrivateKey(); 
+        
+        if (privateKey) {
+          digitalSignature = await pkiHelper.signRecipe(recipeBody, privateKey);
+          console.log("✅ Bài viết đã được ký số bảo mật.");
+        }
+      } catch (err) {
+        console.error("Lỗi ký số:", err);
+      }
+    }
+
+    // 3. Gửi API (Bổ sung trường digitalSignature)
+    const payload = {
+      ...recipeBody,
+      userId: currentUser.id,
+      digitalSignature: digitalSignature
+    };
+
+    console.log('Payload gửi lên server:', payload);
+    // Thực hiện call API lưu bài viết tại đây...
+    
     navigate('/');
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
