@@ -17,6 +17,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
+
 // 4. Khởi động server
 const PORT = 3000;
 app.listen(PORT, () => {

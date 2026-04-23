@@ -145,10 +145,143 @@ const updateUserRole = async (req, res) => {
         res.status(500).json({ message: 'Lỗi hệ thống: ' + err.message });
     }
 };
+const getProfile = async (req, res) => {
+    try {
+        console.log("User ID từ Token:", req.user.userId); // Kiểm tra log ở terminal/cmd của server
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id', sql.Int, req.user.userId) // Ép kiểu sql.Int để chắc chắn
+            .query('SELECT ID as id, FullName as name, Email as email, AvatarURL as avatar FROM Users WHERE ID = @id');
 
+        if (result.recordset.length === 0) {
+            console.log("Không tìm thấy User với ID này trong DB");
+            return res.status(404).json({ message: "Không tìm thấy người dùng" });
+        }
+
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error("Lỗi SQL:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+const getUserProfileById = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await poolPromise;
+        
+        // Sử dụng Multi-statement Query để lấy 4 bảng kết quả trong 1 lần kết nối DB
+        const result = await pool.request()
+            .input('userId', sql.Int, id)
+            .query(`
+                -- 1. Lấy thông tin cơ bản & Thống kê
+                SELECT 
+                    u.ID as id, u.FullName as name, u.AvatarURL as avatar, u.Bio as bio, u.Email as username,
+                    CAST(CASE WHEN u.RoleID = 4 THEN 1 ELSE 0 END AS BIT) as isKOL,
+                    (SELECT COUNT(*) FROM Recipes WHERE UserID = @userId AND Status = 'Published') as totalRecipes,
+                    (SELECT COUNT(*) FROM Follows WHERE FollowingID = @userId) as followers,
+                    (SELECT COUNT(*) FROM Follows WHERE FollowerID = @userId) as following,
+                    ISNULL((SELECT COUNT(*) FROM Likes l JOIN Recipes r ON l.RecipeID = r.ID WHERE r.UserID = @userId), 0) as totalLikes
+                FROM Users u WHERE u.ID = @userId;
+
+                -- 2. Lấy danh sách huy hiệu
+                SELECT b.ID as id, b.Name as name, b.Icon as icon, b.Description as description, b.Color as color
+                FROM Badges b 
+                JOIN UserBadges ub ON b.ID = ub.BadgeID
+                WHERE ub.UserID = @userId;
+
+                -- 3. Lấy công thức tự tạo (My Recipes)
+                SELECT 
+                    r.ID as id, r.Title as title, r.ThumbnailURL as image, 
+                    CAST(r.CookingTime AS VARCHAR) + ' mins' as prepTime,
+                    (SELECT COUNT(*) FROM Likes l WHERE l.RecipeID = r.ID) as likes,
+                    (SELECT COUNT(*) FROM Comments c WHERE c.RecipeID = r.ID) as comments,
+                    (SELECT COUNT(*) FROM Recipes rm WHERE rm.ParentRecipeID = r.ID) as remixes
+                FROM Recipes r
+                WHERE r.UserID = @userId AND r.Status = 'Published'
+                ORDER BY r.CreatedAt DESC;
+
+                -- 4. Lấy công thức đã lưu (Saved Recipes)
+                SELECT 
+                    r.ID as id, r.Title as title, r.ThumbnailURL as image, 
+                    CAST(r.CookingTime AS VARCHAR) + ' mins' as prepTime,
+                    u.FullName as authorName, u.AvatarURL as authorAvatar,
+                    CAST(CASE WHEN u.RoleID = 4 THEN 1 ELSE 0 END AS BIT) as isKOL,
+                    (SELECT COUNT(*) FROM Likes l WHERE l.RecipeID = r.ID) as likes,
+                    (SELECT COUNT(*) FROM Comments c WHERE c.RecipeID = r.ID) as comments,
+                    (SELECT COUNT(*) FROM Recipes rm WHERE rm.ParentRecipeID = r.ID) as remixes
+                FROM SavedRecipes sr
+                JOIN Recipes r ON sr.RecipeID = r.ID
+                JOIN Users u ON r.UserID = u.ID
+                WHERE sr.UserID = @userId
+                ORDER BY sr.SavedAt DESC;
+            `);
+
+        // Check xem user có tồn tại không
+        if (!result.recordsets[0] || result.recordsets[0].length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy người dùng" });
+        }
+
+        // Tách các Recordset thành từng mảng riêng biệt
+        const userInfo = result.recordsets[0][0];
+        const badges = result.recordsets[1];
+        const myRecipesRaw = result.recordsets[2];
+        const savedRecipesRaw = result.recordsets[3];
+
+        // Format lại Response để chuẩn hóa với cấu trúc Frontend yêu cầu
+        const responseData = {
+            name: userInfo.name,
+            username: userInfo.username, // Có thể format lại chuỗi nếu muốn
+            avatar: userInfo.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400', // Default fallback
+            bio: userInfo.bio || 'Chưa có tiểu sử',
+            isKOL: userInfo.isKOL,
+            stats: {
+                recipes: userInfo.totalRecipes,
+                followers: userInfo.followers,
+                following: userInfo.following,
+                totalLikes: userInfo.totalLikes
+            },
+            badges: badges,
+            myRecipes: myRecipesRaw.map(r => ({
+                id: r.id,
+                title: r.title,
+                image: r.image,
+                prepTime: r.prepTime,
+                likes: r.likes,
+                comments: r.comments,
+                remixes: r.remixes,
+                author: {
+                    name: userInfo.name,
+                    avatar: userInfo.avatar,
+                    isKOL: userInfo.isKOL
+                }
+            })),
+            savedRecipes: savedRecipesRaw.map(r => ({
+                id: r.id,
+                title: r.title,
+                image: r.image,
+                prepTime: r.prepTime,
+                likes: r.likes,
+                comments: r.comments,
+                remixes: r.remixes,
+                author: {
+                    name: r.authorName,
+                    avatar: r.authorAvatar,
+                    isKOL: r.isKOL
+                }
+            }))
+        };
+
+        res.json(responseData);
+    } catch (err) {
+        console.error("Lỗi get user profile by ID:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
 module.exports = {
     getRecipes,     
     getAllUsers,     
     toggleBanUser,
-    updateUserRole
+    updateUserRole,
+    getProfile,
+    getUserProfileById
 };

@@ -19,10 +19,26 @@ export interface FlaggedPost {
 }
 
 export interface User {
-  _id: string;
-  username: string;
+  id: number;
   email: string;
-  role: 'admin' | 'user';
-  status: 'active' | 'suspended';
+  fullName: string;
+  roleId: number;
+  banUntil: string | null;
   createdAt: string;
+  status: 'active' | 'suspended';
+}
+
+export interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// Sửa lại interface này
+export interface GetUsersResponse {
+  data: User[];
+  total: number;       // Trực tiếp từ Backend
+  page: number;        // Trực tiếp từ Backend
+  totalPages: number;  // Trực tiếp từ Backend
 }

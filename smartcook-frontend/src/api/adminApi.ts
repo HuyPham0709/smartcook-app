@@ -1,4 +1,5 @@
 import axiosClient from './axiosClient';
+import { GetUsersResponse } from '../types/admin';
 
 export const adminApi = {
   getDashboardStats: (range: string) => axiosClient.get(`/admin/dashboard?range=${range}`),
@@ -6,15 +7,16 @@ export const adminApi = {
   getModerationPosts: () => axiosClient.get('/admin/moderation'),
   handleModerationAction: (payload: any) => axiosClient.post('/admin/moderation/action', payload),
   handleBulkModeration: (payload: any) => axiosClient.post('/admin/moderation/bulk', payload),
-  getAllUsers: () => {
-    return axiosClient.get('/admin/users');
+  
+  getAllUsers: async (params: { page: number; limit: number; search: string }): Promise<GetUsersResponse> => {
+    const response = await axiosClient.get('/admin/users', { params });
+    // Sửa ở đây: Trả về trực tiếp response (vì axiosClient đã bóc response.data rồi)
+    return response as unknown as GetUsersResponse; 
   },
-  // Sửa lại: Gửi PATCH trực tiếp đến /users/:id
-  updateUserStatus: (userId: string, data: any) => {
-    return axiosClient.patch(`/admin/users/${userId}`, data);
-  },
-  // Xóa thực chất là update field active/status
-  deleteUser: (userId: string) => {
-    return axiosClient.patch(`/admin/users/${userId}`, { active: 0 });
+
+  updateUserInfo: async (id: number, payload: { status?: 'active' | 'suspended'; active?: 0 | 1 }): Promise<{ message: string }> => {
+    const response = await axiosClient.put(`/admin/users/${id}`, payload);
+    // Sửa ở đây: Bỏ .data
+    return response as unknown as { message: string }; 
   }
 };

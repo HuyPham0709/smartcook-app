@@ -228,6 +228,39 @@ GO
 
 -- Cập nhật tất cả user cũ đang có trong DB thành 1
 UPDATE Users SET active = 1 WHERE active IS NULL;
+-- Bổ sung bảng Badges và UserBadges
+CREATE TABLE Badges (
+    ID INT PRIMARY KEY IDENTITY(1,1),
+    Name NVARCHAR(100) NOT NULL,
+    Icon NVARCHAR(50), -- Emoji hoặc URL icon
+    Description NVARCHAR(255),
+    Color NVARCHAR(50)
+);
+
+CREATE TABLE UserBadges (
+    UserID INT NOT NULL,
+    BadgeID INT NOT NULL,
+    AchievedAt DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    PRIMARY KEY (UserID, BadgeID),
+    CONSTRAINT FK_UserBadges_User FOREIGN KEY (UserID) REFERENCES Users(ID),
+    CONSTRAINT FK_UserBadges_Badge FOREIGN KEY (BadgeID) REFERENCES Badges(ID)
+);
+
+-- Thêm Data mẫu cho Badges
+INSERT INTO Badges (Name, Icon, Description, Color) VALUES 
+('Rising Star', '⭐', 'First 100 likes', '#FFD700'),
+('Recipe Master', '👨‍🍳', '10 published recipes', '#FF8C42'),
+('Community Favorite', '❤️', '1000+ total likes', '#EF4444');
+
+-- (Tuỳ chọn) Bảng lưu công thức (Saved/Bookmarked Recipes)
+CREATE TABLE SavedRecipes (
+    UserID INT NOT NULL,
+    RecipeID INT NOT NULL,
+    SavedAt DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    PRIMARY KEY (UserID, RecipeID),
+    CONSTRAINT FK_Saved_User FOREIGN KEY (UserID) REFERENCES Users(ID),
+    CONSTRAINT FK_Saved_Recipe FOREIGN KEY (RecipeID) REFERENCES Recipes(ID) ON DELETE CASCADE
+);
 -- 9. DỮ LIỆU MẪU CHO ROLE
 INSERT INTO Roles (RoleName, Description) VALUES 
 ('Admin', 'Toàn quyền hệ thống'),

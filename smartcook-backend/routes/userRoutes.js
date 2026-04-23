@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-
 const userController = require('../controllers/userController');
+const { verifyToken } = require('../middleware/auth.middleware');
 
-// Đã sửa getUsers thành getRecipes để khớp với file Controller
+router.get('/profile', verifyToken, userController.getProfile); 
 router.get('/', userController.getRecipes); 
+router.get('/profile/:id', userController.getUserProfileById);
 
 module.exports = router;
