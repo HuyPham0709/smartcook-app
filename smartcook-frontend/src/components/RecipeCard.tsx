@@ -1,16 +1,19 @@
 import { Link } from 'react-router-dom';
-import { Heart, Bookmark, Clock, Repeat2, BadgeCheck } from 'lucide-react';
-import { useState } from 'react';
+import { Heart, Bookmark, Clock, Repeat2, BadgeCheck, ShieldCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { pkiHelper } from '../utils/pkiHelper';
 
 interface Recipe {
   id: number;
   title: string;
   image: string;
   prepTime: string;
+  digitalSignature?: string; // Thêm trường này
   author: {
     name: string;
     avatar: string;
     isKOL: boolean;
+    publicKey?: string; // Thêm trường này
   };
   likes: number;
   isLiked?: boolean;
@@ -24,6 +27,32 @@ interface RecipeCardProps {
 export default function RecipeCard({ recipe }: RecipeCardProps) {
   const [isLiked, setIsLiked] = useState(recipe.isLiked || false);
   const [isSaved, setIsSaved] = useState(recipe.isSaved || false);
+  
+  // Logic xác thực chữ ký số
+  const [isVerified, setIsVerified] = useState(false);
+
+  useEffect(() => {
+    const verifyData = async () => {
+      // Chỉ thực hiện xác thực nếu có đủ chữ ký và khóa công khai
+      if (recipe.digitalSignature && recipe.author.publicKey) {
+        // Dữ liệu cần khớp với cấu trúc lúc ký ở CreateRecipePage
+        const dataToVerify = {
+          title: recipe.title,
+          prepTime: recipe.prepTime,
+          // Thêm các trường khác nếu lúc ký bạn có bao gồm chúng
+        };
+
+        const isValid = await pkiHelper.verifyRecipe(
+          dataToVerify, 
+          recipe.digitalSignature, 
+          recipe.author.publicKey
+        );
+        setIsVerified(isValid);
+      }
+    };
+
+    verifyData();
+  }, [recipe]);
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group">
@@ -52,24 +81,36 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         </Link>
 
         {/* Author Info */}
-        <Link
-          to={`/profile/${recipe.id}`}
-          className="flex items-center gap-2 mb-4 group/author"
-        >
-          <img
-            src={recipe.author.avatar}
-            alt={recipe.author.name}
-            className="w-7 h-7 rounded-full object-cover ring-2 ring-gray-100"
-          />
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-medium text-gray-600 group-hover/author:text-gray-900 transition-colors">
-              {recipe.author.name}
-            </span>
-            {recipe.author.isKOL && (
-              <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
-            )}
-          </div>
-        </Link>
+        <div className="flex items-center justify-between mb-4">
+          <Link
+            to={`/profile/${recipe.id}`}
+            className="flex items-center gap-2 group/author"
+          >
+            <img
+              src={recipe.author.avatar}
+              alt={recipe.author.name}
+              className="w-7 h-7 rounded-full object-cover ring-2 ring-gray-100"
+            />
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-medium text-gray-600 group-hover/author:text-gray-900 transition-colors">
+                {recipe.author.name}
+              </span>
+              
+              {/* Hiển thị tích xanh dựa trên kết quả xác thực PKI */}
+              {isVerified ? (
+                <div className="group relative">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 fill-blue-100" />
+                  {/* Tooltip giải thích khi hover */}
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-[10px] text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Chữ ký số hợp lệ
+                  </span>
+                </div>
+              ) : recipe.author.isKOL && (
+                <BadgeCheck className="w-3.5 h-3.5 text-gray-400" />
+              )}
+            </div>
+          </Link>
+        </div>
 
         {/* Action Row */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">

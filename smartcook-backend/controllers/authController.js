@@ -65,6 +65,42 @@ const login = async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.PasswordHash);
         if (!validPassword) return res.status(400).json({ message: 'Sai email hoặc mật khẩu!' });
 
+        // ==========================================
+        // THÊM MỚI: KIỂM TRA TRẠNG THÁI KHÓA TÀI KHOẢN
+        // ==========================================
+        const now = new Date();
+        const banUntilDate = user.BanUntil ? new Date(user.BanUntil) : null;
+        const isBanned = user.active === 0 || (banUntilDate && banUntilDate > now);
+
+        if (isBanned) {
+            let remainingTimeMsg = "Vĩnh viễn";
+            if (banUntilDate && banUntilDate > now) {
+                const diffMs = banUntilDate.getTime() - now.getTime();
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                
+                if (diffDays > 0) {
+                    remainingTimeMsg = `${diffDays} ngày ${diffHours} giờ`;
+                } else if (diffHours > 0) {
+                    remainingTimeMsg = `${diffHours} giờ`;
+                } else {
+                    remainingTimeMsg = `Dưới 1 giờ`;
+                }
+            }
+
+            return res.status(403).json({
+                success: false,
+                code: "USER_BANNED",
+                message: "Đăng nhập thất bại. Tài khoản đã bị khóa!",
+                details: {
+                    reason: user.BanReason || "Vi phạm tiêu chuẩn cộng đồng.",
+                    remainingTime: remainingTimeMsg,
+                    bannedUntil: user.BanUntil
+                }
+            });
+        }
+        // ==========================================
+
         // 3. (Tùy chọn) Chèn logic 2FA ở đây nếu user.Is2FAEnabled = 1
         
         // 4. Trả về Token

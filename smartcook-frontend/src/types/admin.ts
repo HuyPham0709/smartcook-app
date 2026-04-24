@@ -1,4 +1,4 @@
-// Định nghĩa cho AuditLog
+
 export interface AuditLog {
   id: string;
   userId: string;
@@ -8,7 +8,6 @@ export interface AuditLog {
   ipAddress?: string;
 }
 
-// Định nghĩa cho Moderation
 export interface FlaggedPost {
   id: string;
   postId: string;
@@ -19,10 +18,24 @@ export interface FlaggedPost {
 }
 
 export interface User {
-  _id: string;
-  username: string;
+  id: number;
   email: string;
-  role: 'admin' | 'user';
-  status: 'active' | 'suspended';
+  fullName: string;
+  roleId: number;
+  banUntil: string | null;
   createdAt: string;
+  status: 'active' | 'suspended';
+}
+
+export interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+export interface GetUsersResponse {
+  data: User[];
+  total: number; 
+  page: number; 
+  totalPages: number;  
 }

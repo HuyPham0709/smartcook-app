@@ -20,13 +20,13 @@ import FridgeCreativesPage from './pages/recipe/FridgeCreativesPage';
 import AdminDashboardPage from './pages/admin/AdminDashBoardPage';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
 import ModerationPage from './pages/admin/ModerationPage';
-import UserManagementPage from './pages/admin/UserManagementPage'; // <-- ĐÃ THÊM IMPORT
+import UserManagementPage from './pages/admin/UserManagement/UserManagementPage'; // <-- ĐÃ THÊM IMPORT
 
 // Pages: User
 import ProfilePage from './pages/user/ProfilePage';
 import SessionManagementPage from './pages/user/SessionManagementPage';
 
-const AppRoutes = () => {
+const AppRoutes = () => {5
   return (
     <Routes>
       {/* --- PUBLIC ROUTES (No Layout) --- */}
@@ -45,15 +45,17 @@ const AppRoutes = () => {
         <Route path="/fridge-creatives" element={<FridgeCreativesPage />} /> 
 
         {/* User */}
-        <Route path="user/profile/:userId" element={<ProfilePage />} />
+        <Route path="/user/profile/:userId" element={<ProfilePage />} />
+        
         {/* Settings */}
-        <Route path="user/settings/sessions" element={<SessionManagementPage />} />
+        <Route path="/user/settings/sessions" element={<SessionManagementPage />} />
 
         {/* Admin Section */}
         <Route path="/admin">
           <Route index element={<AdminDashboardPage />} />
-          <Route path="audit-logs" element={<AuditLogsPage />} />
+          <Route path="logs" element={<AuditLogsPage />} />
           <Route path="moderation" element={<ModerationPage />} />
+          <Route path="users" element={<UserManagementPage />} />
         </Route>
       </Route>
 

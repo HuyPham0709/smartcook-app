@@ -1,95 +1,76 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Award, BookMarked, ChefHat, CheckCircle, Users, Heart } from 'lucide-react';
-import  RecipeCard  from '../../components/RecipeCard';
-
-const badges = [
-  { id: 1, name: 'Rising Star', icon: '⭐', description: 'First 100 likes', color: '#FFD700' },
-  { id: 2, name: 'Recipe Master', icon: '👨‍🍳', description: '10 published recipes', color: '#FF8C42' },
-  { id: 3, name: 'Community Favorite', icon: '❤️', description: '1000+ total likes', color: '#EF4444' },
-  { id: 4, name: 'Remix King', icon: '🔄', description: '50 remixes created', color: '#8B5CF6' },
-  { id: 5, name: 'Early Adopter', icon: '🚀', description: 'Joined in beta', color: '#3B82F6' },
-];
-
-const myRecipes = [
-  {
-    id: 1,
-    title: 'Fluffy Pancakes with Berries',
-    image: 'https://images.unsplash.com/photo-1585407698236-7a78cdb68dec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxicmVha2Zhc3QlMjBwYW5jYWtlcyUyMGJlcnJpZXN8ZW58MXx8fHwxNzc2MzE4NDY4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    prepTime: '25 mins',
-    author: {
-      name: 'Sarah Johnson',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-      isKOL: true,
-    },
-    likes: 1243,
-    comments: 89,
-    remixes: 45,
-  },
-  {
-    id: 4,
-    title: 'Decadent Chocolate Cake',
-    image: 'https://images.unsplash.com/photo-1607257882338-70f7dd2ae344?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZXNzZXJ0JTIwY2hvY29sYXRlJTIwY2FrZXxlbnwxfHx8fDE3NzYyOTk4ODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    prepTime: '60 mins',
-    author: {
-      name: 'Sarah Johnson',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-      isKOL: true,
-    },
-    likes: 3421,
-    comments: 234,
-    remixes: 156,
-  },
-];
-
-const savedRecipes = [
-  {
-    id: 2,
-    title: 'Healthy Buddha Bowl',
-    image: 'https://images.unsplash.com/photo-1666819691822-29a09f0992e5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdW5jaCUyMGJvd2wlMjBoZWFsdGh5fGVufDF8fHx8MTc3NjMxOTA3OXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    prepTime: '30 mins',
-    author: {
-      name: 'Mike Chen',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      isKOL: false,
-    },
-    likes: 892,
-    comments: 54,
-    remixes: 32,
-  },
-  {
-    id: 3,
-    title: 'Colorful Garden Salad',
-    image: 'https://images.unsplash.com/photo-1681330266932-391fd00f805f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2ZWdldGFyaWFuJTIwc2FsYWQlMjBjb2xvcmZ1bHxlbnwxfHx8fDE3NzYzMTkwNzl8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    prepTime: '15 mins',
-    author: {
-      name: 'Emma Davis',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
-      isKOL: true,
-    },
-    likes: 2156,
-    comments: 143,
-    remixes: 78,
-  },
-];
+import { Award, BookMarked, ChefHat, CheckCircle, Users } from 'lucide-react';
+import RecipeCard from '../../components/RecipeCard';
+import { publicApi } from '../../api/publicApi';
+import { UserProfile } from '../../types/user';
 
 export default function ProfilePage() {
-  const { userId } = useParams();
+  const { userId } = useParams<{ userId: string }>();
   const [activeTab, setActiveTab] = useState<'recipes' | 'saved'>('recipes');
+  
+  // Trạng thái lưu trữ dữ liệu và trạng thái load
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const MASTER_BADGES = [
+  { 
+    id: 1, name: 'Rising Star', icon: '⭐', 
+    description: 'Đạt trên 100 lượt thích', 
+    condition: (stats: any) => stats.totalLikes >= 100 
+  },
+  { 
+    id: 2, name: 'Recipe Master', icon: '👨‍🍳', 
+    description: 'Đã đăng trên 10 công thức', 
+    condition: (stats: any) => stats.recipes >= 10 
+  },
+  { 
+    id: 3, name: 'Community Favorite', icon: '❤️', 
+    description: 'Có trên 50 người theo dõi', 
+    condition: (stats: any) => stats.followers >= 50 
+  },
+  { 
+    id: 5, name: 'Early Adopter', icon: '🚀', 
+    description: 'Thành viên tham gia sớm', 
+    condition: () => true // Giả sử luôn hiện hoặc check theo ngày tạo
+  },
+];
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        if (userId) {
+          const data = await publicApi.getUserProfile(userId);
+          setProfileData(data);
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Không thể tải thông tin người dùng');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const profile = {
-    name: 'Sarah Johnson',
-    username: '@sarahcooks',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-    bio: 'Passionate home chef sharing delicious recipes 🍳 | Featured in Food Magazine | Cooking made simple ❤️',
-    isKOL: true,
-    stats: {
-      recipes: 24,
-      followers: 12500,
-      following: 342,
-      totalLikes: 45230,
-    },
-  };
+    fetchProfile();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 border-4 border-[var(--orange)] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error || !profileData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium text-lg">
+        {error || 'Profile not found'}
+      </div>
+    );
+  }
+
+  // Tách Destructuring dữ liệu trả về từ API
+  const { badges, myRecipes, savedRecipes, ...profile } = profileData;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -153,7 +134,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-
       {/* Badges Section */}
       <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -163,16 +143,35 @@ export default function ProfilePage() {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {badges.map((badge) => (
-              <div
-                key={badge.id}
-                className="bg-white rounded-xl p-4 text-center shadow-md hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer"
-              >
-                <div className="text-4xl mb-2">{badge.icon}</div>
-                <h3 className="font-semibold text-gray-900 text-sm mb-1">{badge.name}</h3>
-                <p className="text-xs text-gray-600">{badge.description}</p>
-              </div>
-            ))}
+            {MASTER_BADGES.map((badge) => {
+              // Kiểm tra xem User đã đạt điều kiện chưa
+              const isAchieved = badge.condition(profile.stats);
+              
+              return (
+                <div
+                  key={badge.id}
+                  title={badge.description}
+                  className={`relative bg-white rounded-xl p-4 text-center shadow-md transition-all 
+                    ${isAchieved 
+                      ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer border-2 border-transparent' 
+                      : 'opacity-50 grayscale cursor-not-allowed border-2 border-dashed border-gray-200'
+                    }`}
+                >
+                  {!isAchieved && (
+                    <div className="absolute top-2 right-2">
+                      <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full uppercase font-bold">
+                        Locked
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-4xl mb-2">{badge.icon}</div>
+                  <h3 className={`font-semibold text-sm mb-1 ${isAchieved ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {badge.name}
+                  </h3>
+                  <p className="text-xs text-gray-500">{badge.description}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -218,6 +217,9 @@ export default function ProfilePage() {
               {myRecipes.map((recipe) => (
                 <RecipeCard key={recipe.id} recipe={recipe} />
               ))}
+              {myRecipes.length === 0 && (
+                 <p className="text-gray-500 col-span-full text-center py-10">Người dùng này chưa có công thức nào.</p>
+              )}
             </div>
           </div>
         )}
@@ -228,6 +230,9 @@ export default function ProfilePage() {
               {savedRecipes.map((recipe) => (
                 <RecipeCard key={recipe.id} recipe={recipe} />
               ))}
+              {savedRecipes.length === 0 && (
+                 <p className="text-gray-500 col-span-full text-center py-10">Người dùng này chưa lưu công thức nào.</p>
+              )}
             </div>
           </div>
         )}
