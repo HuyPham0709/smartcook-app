@@ -23,3 +23,12 @@ export interface CreateRecipePayload {
   ingredients: IngredientPayload[];
   steps: StepPayload[];
 }
+export interface CommentPayload {
+  content: string;
+  parentCommentId?: number;
+}
+
+export interface RatingPayload {
+  score: number;
+  comment?: string;
+}

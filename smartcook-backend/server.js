@@ -6,6 +6,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const recipeRoutes = require('./routes/recipeRoutes');
+const interactionRoutes = require('./routes/interactionRoutes');
 const app = express();
 
 // 1. Cấu hình CORS để cho phép Frontend (React) gọi API
@@ -19,6 +20,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipeRoutes);
+app.use('/api/interactions', interactionRoutes);
 // 4. Khởi động server
 const PORT = 3000;
 app.listen(PORT, () => {
