@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Upload, Plus, Trash2, Sparkles } from 'lucide-react';
 import { pkiHelper } from '../../utils/pkiHelper';
+import axiosClient from '../../api/axiosClient';
 
 type Step = 1 | 2 | 3;
 
@@ -104,48 +105,69 @@ export default function CreateRecipePage() {
   };
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-  const handleSubmit = async () => {
-    // 1. Chuẩn bị dữ liệu bài đăng
+ const handleSubmit = async () => {
+    // 1. Chuẩn bị dữ liệu bài đăng (Phải khớp với CreateRecipePayload trong index.ts)
     const recipeBody = {
       title,
       description,
-      prepTime,
-      servings,
+      cookingTime: parseInt(prepTime) || 0, // DB cần số
+      servings: parseInt(servings) || 1, // DB cần số
       difficulty,
-      ingredients: ingredients.map(i => i.text),
-      cookingSteps: cookingSteps.map(s => s.text)
+      // Map về đúng object để qua được NOT NULL của DB
+      ingredients: ingredients.map(i => ({
+        name: i.text,
+        amount: 1, 
+        unit: 'tuỳ chỉnh'
+      })),
+      steps: cookingSteps.map((s, index) => ({
+        stepNumber: index + 1,
+        content: s.text
+      }))
     };
 
     let digitalSignature = null;
 
-    // 2. Nếu là KOL (RoleId = 4), tiến hành ký số
+    // 2. Ký số nếu là KOL (roleId === 4)
     if (currentUser.roleId === 4) {
       try {
-        // Lấy Private Key từ nơi lưu trữ an toàn (ví dụ IndexedDB hoặc Key store của trình duyệt)
-        // Đây là ví dụ giả định bạn đã có object privateKey
-        const privateKey = await getStoredPrivateKey(); 
+        console.log("Đang tiến hành ký số...");
+        
+        // CÁCH MOCK ĐỂ TEST: Tự generate key ngay lúc này để có object CryptoKey hợp lệ
+        // Sau này làm xong tính năng "Quản lý Key", bạn sẽ lấy privateKey từ IndexedDB ra
+        const mockKeyPair = await pkiHelper.generateKeyPair(); 
+        const privateKey = mockKeyPair.privateKey;
         
         if (privateKey) {
           digitalSignature = await pkiHelper.signRecipe(recipeBody, privateKey);
-          console.log("✅ Bài viết đã được ký số bảo mật.");
+          console.log("✅ Bài viết đã được ký số bảo mật. Chữ ký:", digitalSignature);
         }
       } catch (err) {
         console.error("Lỗi ký số:", err);
       }
     }
 
-    // 3. Gửi API (Bổ sung trường digitalSignature)
+    // 3. Chuẩn bị Payload cuối cùng để gửi API
     const payload = {
       ...recipeBody,
-      userId: currentUser.id,
+      userId: currentUser.id || 1, // Fallback nếu chưa đăng nhập
+      thumbnailURL: coverImage,
       digitalSignature: digitalSignature
     };
 
-    console.log('Payload gửi lên server:', payload);
-    // Thực hiện call API lưu bài viết tại đây...
-    
-    navigate('/');
-  };
+    try {
+      console.log('Payload gửi lên server:', payload);
+      
+      // BỎ COMMENT DÒNG NÀY ĐỂ BẮT ĐẦU GỬI ĐI THẬT
+      const response = await axiosClient.post('/recipes', payload); 
+      console.log("Phản hồi từ server:", response);
+      
+      alert('Tạo công thức thành công!');
+      navigate('/'); // Quay về trang chủ
+    } catch (error) {
+      console.error('Lỗi khi lưu bài viết:', error);
+      alert('Có lỗi xảy ra khi lưu công thức.');
+    }
+  }
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

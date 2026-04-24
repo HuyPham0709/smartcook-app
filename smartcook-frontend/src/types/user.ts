@@ -1,4 +1,4 @@
-// Interface cơ bản cho thông tin User chung (giữ nguyên của bạn)
+
 export interface User {
   id: string;
   username: string;
@@ -7,8 +7,6 @@ export interface User {
   avatarUrl?: string;
   createdAt?: string;
 }
-
-// --- THÊM CÁC INTERFACE DÀNH CHO TRANG PROFILE ---
 
 export interface Author {
   name: string;
@@ -35,7 +33,6 @@ export interface Badge {
   color: string;
 }
 
-// Cập nhật lại UserProfile để hứng toàn bộ dữ liệu trả về từ backend /api/users/profile/:id
 export interface UserProfile {
   name: string;
   username: string;

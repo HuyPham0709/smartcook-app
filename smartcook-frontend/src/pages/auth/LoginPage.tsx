@@ -10,25 +10,28 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false); 
   const navigate = useNavigate();
 
+// Trong src/pages/auth/LoginPage.tsx
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      // Gọi API tối ưu bằng authApi (Axios)
       const data: any = await authApi.login({ email, password });
 
-      // Xử lý luồng 2FA
       if (data.requires2FA) {
         localStorage.setItem('temp_user_id', data.userId);
         navigate('/verify-2fa'); 
       } else {
         localStorage.setItem('accessToken', data.accessToken);
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
         navigate('/');
       }
     } catch (err: any) {
-      // Bắt lỗi từ server gửi về (VD: Sai mật khẩu, không tìm thấy user)
       setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');
     } finally {
       setIsLoading(false);

@@ -1,4 +1,4 @@
-// Định nghĩa cho AuditLog
+
 export interface AuditLog {
   id: string;
   userId: string;
@@ -8,7 +8,6 @@ export interface AuditLog {
   ipAddress?: string;
 }
 
-// Định nghĩa cho Moderation
 export interface FlaggedPost {
   id: string;
   postId: string;
@@ -34,11 +33,9 @@ export interface PaginationData {
   limit: number;
   totalPages: number;
 }
-
-// Sửa lại interface này
 export interface GetUsersResponse {
   data: User[];
-  total: number;       // Trực tiếp từ Backend
-  page: number;        // Trực tiếp từ Backend
-  totalPages: number;  // Trực tiếp từ Backend
+  total: number; 
+  page: number; 
+  totalPages: number;  
 }
