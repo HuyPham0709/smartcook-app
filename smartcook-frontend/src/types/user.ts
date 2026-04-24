@@ -49,3 +49,15 @@ export interface UserProfile {
   myRecipes: Post[];
   savedRecipes: Post[];
 }
+export interface BannedErrorDetails {
+    reason: string;
+    bannedUntil: string | null;
+    remainingTime: string; // <-- Thêm dòng này
+}
+
+export interface BannedErrorResponse {
+    success: boolean;
+    code: string; // Thường là "USER_BANNED"
+    message: string;
+    details: BannedErrorDetails;
+}

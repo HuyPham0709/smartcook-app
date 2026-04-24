@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChefHat, Mail, Lock, Chrome } from 'lucide-react';
 import { authApi } from '../../api/authApi';
+import { toast } from 'sonner'; // THÊM IMPORT NÀY
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -10,9 +11,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false); 
   const navigate = useNavigate();
 
-// Trong src/pages/auth/LoginPage.tsx
-
-  const handleLogin = async (e: React.FormEvent) => {
+const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -32,7 +31,20 @@ export default function LoginPage() {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');
+      const errData = err.response?.data;
+
+      // KHI TÀI KHOẢN BỊ KHÓA (Gắn thẳng text vào khung error có sẵn của bạn)
+      if (err.response?.status === 403 && errData?.code === 'USER_BANNED') {
+        const reason = errData.details?.reason || "Vi phạm chính sách cộng đồng";
+        const remaining = errData.details?.remainingTime || "Vĩnh viễn";
+        
+        // Gộp nội dung thành chuỗi để khung đỏ của bạn hiển thị
+        setError(`Tài khoản bị khóa! Lý do: ${reason}. Thời gian còn lại: ${remaining}`);
+      } 
+      // CÁC LỖI KHÁC (Sai mật khẩu, lỗi server...)
+      else {
+        setError(errData?.message || err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');
+      }
     } finally {
       setIsLoading(false);
     }
