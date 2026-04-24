@@ -6,4 +6,5 @@ const recipeController = require('../controllers/recipeController');
 // Khi nào làm xong auth thì bạn đổi thành: router.post('/', verifyToken, recipeController.createRecipe);
 router.post('/', recipeController.createRecipe);
 router.get('/', recipeController.getAllRecipes);
+router.get('/:recipeId', recipeController.getRecipeById);
 module.exports = router;

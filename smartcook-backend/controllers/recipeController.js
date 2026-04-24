@@ -122,3 +122,120 @@ exports.getAllRecipes = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu' });
     }
 };
+exports.getRecipeById = async (req, res) => {
+    try {
+        const { recipeId } = req.params;
+        const currentUserId = req.query.userId || 0; 
+        
+        const pool = await poolPromise;
+
+        // 1. Lấy thông tin cơ bản của Recipe và Tác giả
+        const recipeResult = await pool.request()
+            .input('recipeId', sql.Int, recipeId)
+            .query(`
+                SELECT r.*, u.FullName as AuthorName, u.AvatarURL as AuthorAvatar, u.RoleID as AuthorRole
+                FROM Recipes r
+                LEFT JOIN Users u ON r.UserID = u.ID
+                WHERE r.ID = @recipeId
+            `);
+            
+        if (recipeResult.recordset.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy công thức!' });
+        }
+        const recipeInfo = recipeResult.recordset[0];
+
+        // 2. Lấy danh sách nguyên liệu
+        const ingredientsResult = await pool.request()
+            .input('recipeId', sql.Int, recipeId)
+            .query('SELECT * FROM Ingredients WHERE RecipeID = @recipeId');
+
+        // 3. Lấy danh sách các bước nấu
+        const stepsResult = await pool.request()
+            .input('recipeId', sql.Int, recipeId)
+            .query('SELECT * FROM RecipeSteps WHERE RecipeID = @recipeId ORDER BY StepNumber ASC');
+
+        // 4. Lấy tổng số Like và xem currentUser đã like chưa
+        const likesResult = await pool.request()
+            .input('recipeId', sql.Int, recipeId)
+            .input('userId', sql.Int, currentUserId)
+            .query(`
+                SELECT 
+                    COUNT(*) as TotalLikes,
+                    SUM(CASE WHEN UserID = @userId THEN 1 ELSE 0 END) as IsLikedByMe
+                FROM Likes
+                WHERE RecipeID = @recipeId
+            `);
+        const likesCount = likesResult.recordset[0].TotalLikes || 0;
+        const isLiked = likesResult.recordset[0].IsLikedByMe > 0;
+
+        // 5. Lấy số sao (Rating) của User hiện tại đã đánh giá
+        const ratingResult = await pool.request()
+            .input('recipeId', sql.Int, recipeId)
+            .input('userId', sql.Int, currentUserId)
+            .query(`SELECT Score FROM Ratings WHERE RecipeID = @recipeId AND UserID = @userId`);
+        const userRating = ratingResult.recordset.length > 0 ? ratingResult.recordset[0].Score : 0;
+
+        // 6. Lấy danh sách Comments (Join với Ratings để lấy số sao của từng người)
+        const commentsResult = await pool.request()
+            .input('recipeId', sql.Int, recipeId)
+            .query(`
+                SELECT 
+                    c.ID, c.Content, c.CreatedAt,
+                    u.FullName, u.AvatarURL,
+                    COALESCE(r.Score, 5) as UserScore 
+                FROM Comments c
+                JOIN Users u ON c.UserID = u.ID
+                LEFT JOIN Ratings r ON r.RecipeID = c.RecipeID AND r.UserID = c.UserID
+                WHERE c.RecipeID = @recipeId
+                ORDER BY c.CreatedAt DESC
+            `);
+
+        const formattedComments = commentsResult.recordset.map(c => ({
+            id: c.ID,
+            user: c.FullName || 'Người dùng',
+            avatar: c.AvatarURL || 'https://ui-avatars.com/api/?name=User',
+            content: c.Content,
+            rating: c.UserScore,
+            time: new Date(c.CreatedAt).toLocaleString('vi-VN') 
+        }));
+
+        // 7. FORMAT LẠI TOÀN BỘ CHUẨN ĐỂ TRẢ VỀ FRONTEND
+        res.json({
+            id: recipeInfo.ID,
+            title: recipeInfo.Title,
+            description: recipeInfo.Description,
+            image: recipeInfo.ThumbnailURL || 'https://images.unsplash.com/photo-1585407698236-7a78cdb68dec?w=1080',
+            prepTime: recipeInfo.CookingTime ? `${recipeInfo.CookingTime} mins` : 'N/A',
+            servings: recipeInfo.Servings || 1,
+            difficulty: recipeInfo.Difficulty || 'Easy',
+            author: {
+                name: recipeInfo.AuthorName || 'Đầu bếp ẩn danh',
+                avatar: recipeInfo.AuthorAvatar || 'https://ui-avatars.com/api/?name=User',
+                isKOL: recipeInfo.AuthorRole === 4 
+            },
+            nutrition: {
+                calories: recipeInfo.Calories || 0,
+                protein: `${recipeInfo.Protein || 0}g`,
+                carbs: `${recipeInfo.Carbs || 0}g`,
+                fat: `${recipeInfo.Fat || 0}g`
+            },
+            ingredients: ingredientsResult.recordset.map(ing => ({
+                id: ing.ID,
+                item: `${ing.Amount || ''} ${ing.Unit || ''} ${ing.Name || ''} ${ing.Note ? `(${ing.Note})` : ''}`.trim()
+            })),
+            steps: stepsResult.recordset.map(step => ({
+                id: step.StepNumber,
+                instruction: step.Content,
+                image: step.MediaURL
+            })),
+            likesCount,
+            isLiked,
+            userRating,
+            comments: formattedComments
+        });
+
+    } catch (error) {
+        console.error("Lỗi getRecipeById:", error);
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};

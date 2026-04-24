@@ -1,32 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Clock, Users, ChefHat, CheckCircle, Play, MessageCircle, Sparkles, Heart, Star, Send } from 'lucide-react';
 import { toast } from 'sonner';
-// import { interactionApi } from '../../api/interactionApi'; // Mở comment này ra khi có API thật
+import { recipeApi } from '../../api/recipeApi'; // Import API lấy dữ liệu
+import { interactionApi } from '../../api/interactionApi'; // Mở comment này ra khi có API thật
 
 export default function RecipeDetailsPage() {
   const { recipeId } = useParams();
-  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
-  const [showAIChat, setShowAIChat] = useState(false);
+  
+  // --- STATES DỮ LIỆU TỪ SQL ---
+  const [recipe, setRecipe] = useState<any>(null); // State chứa thông tin công thức
+  const [isLoading, setIsLoading] = useState(true); // State loading
 
   // --- STATES TƯƠNG TÁC ---
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+  const [showAIChat, setShowAIChat] = useState(false);
+  
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(124);
+  const [likesCount, setLikesCount] = useState(0);
   const [commentText, setCommentText] = useState('');
   const [userRating, setUserRating] = useState(0); 
+  const [commentsList, setCommentsList] = useState<any[]>([]);
 
-  // State danh sách bình luận (Có sẵn data mẫu để test)
-  const [commentsList, setCommentsList] = useState([
-    { id: 1, user: 'John Doe', avatar: 'https://i.pravatar.cc/150?img=11', content: 'This recipe is amazing! I tried it yesterday.', rating: 5, time: '2 hours ago' },
-    { id: 2, user: 'Jane Smith', avatar: 'https://i.pravatar.cc/150?img=5', content: 'My kids loved it. Thank you!', rating: 4, time: '1 day ago' }
-  ]);
+// --- GỌI API FETCH DATA TỪ BACKEND ---
+  useEffect(() => {
+    const fetchRecipeData = async () => {
+      if (!recipeId) return;
+      try {
+        setIsLoading(true);
+        
+        // 1. Lấy thông tin User hiện tại từ LocalStorage
+        const storedUser = localStorage.getItem('user');
+        const currentUser = storedUser ? JSON.parse(storedUser) : null;
 
-  // --- HÀM XỬ LÝ ---
+        // 2. Gọi API kèm userId
+        const data = await recipeApi.getRecipeDetails(recipeId, currentUser?.id);
+        
+        // 3. Đổ dữ liệu từ SQL vào State
+        setRecipe(data);
+        
+        // --- CẬP NHẬT TRẠNG THÁI TƯƠNG TÁC TỪ SQL ---
+        setLikesCount(data.likesCount);
+        setIsLiked(data.isLiked);           // Trạng thái nút Tim (đỏ hay trắng)
+        setUserRating(data.userRating);     // Số sao user này đã rate trước đó
+        setCommentsList(data.comments);     // Danh sách bình luận
+        
+      } catch (error) {
+        console.error("Lỗi fetch recipe:", error);
+        toast.error("Không thể tải dữ liệu công thức!");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecipeData();
+  }, [recipeId]);
+
+  // --- HÀM XỬ LÝ (Giữ nguyên logic cũ) ---
   const handleToggleLike = async () => {
     try {
       setIsLiked(!isLiked);
       setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
-      // await interactionApi.toggleLike(recipeId); // Tạm ẩn API
+      await interactionApi.toggleLike(recipeId);
     } catch (error) {
       setIsLiked(!isLiked);
       setLikesCount(prev => isLiked ? prev + 1 : prev - 1);
@@ -39,20 +74,20 @@ export default function RecipeDetailsPage() {
     if (!commentText.trim()) return;
 
     try {
-      // await interactionApi.addComment(recipeId, { content: commentText }); // Tạm ẩn API
+      await interactionApi.addComment(recipeId, { content: commentText }); // Tạm ẩn API
       
       // Cập nhật UI ngay lập tức
       const newComment = {
         id: Date.now(),
-        user: 'Bạn', // Tạm hiển thị là "Bạn"
+        user: 'Bạn', 
         avatar: 'https://ui-avatars.com/api/?name=User&background=random',
         content: commentText,
-        rating: userRating || 5, // Nếu chưa chọn sao thì mặc định là 5
+        rating: userRating || 5,
         time: 'Vừa xong'
       };
 
-      setCommentsList([newComment, ...commentsList]); // Thêm bình luận mới lên đầu danh sách
-      setCommentText(''); // Xóa trắng ô input
+      setCommentsList([newComment, ...commentsList]); 
+      setCommentText(''); 
       toast.success("Bình luận của bạn đã được gửi!");
     } catch (error) {
       toast.error("Có lỗi xảy ra, vui lòng thử lại!");
@@ -62,7 +97,7 @@ export default function RecipeDetailsPage() {
   const handleRating = async (score: number) => {
     try {
       setUserRating(score);
-      // await interactionApi.addRating(recipeId, { score, comment: "Tuyệt vời" });
+      await interactionApi.addRating(recipeId, { score, comment: "Tuyệt vời" });
       toast.success(`Đã đánh giá ${score} sao!`);
     } catch (error) {
       toast.error("Lỗi khi gửi đánh giá.");
@@ -79,35 +114,24 @@ export default function RecipeDetailsPage() {
     setCheckedIngredients(newChecked);
   };
 
-  // --- DỮ LIỆU MẪU ---
-  const recipe = {
-    id: recipeId,
-    title: 'Fluffy Pancakes with Berries',
-    image: 'https://images.unsplash.com/photo-1585407698236-7a78cdb68dec?w=1080&q=80',
-    prepTime: '25 mins',
-    servings: 4,
-    difficulty: 'Easy',
-    author: { name: 'Sarah Johnson', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', isKOL: true },
-    description: 'Start your morning right with these incredibly fluffy pancakes topped with fresh berries and maple syrup. Perfect for weekend brunch!',
-    ingredients: [
-      { id: 1, item: '2 cups all-purpose flour' },
-      { id: 2, item: '2 tablespoons sugar' },
-      { id: 3, item: '2 teaspoons baking powder' },
-      { id: 4, item: '1 teaspoon salt' },
-      { id: 5, item: '2 eggs' },
-      { id: 6, item: '1¾ cups milk' },
-      { id: 7, item: '4 tablespoons melted butter' },
-      { id: 8, item: '1 cup mixed berries' },
-      { id: 9, item: 'Maple syrup for serving' },
-    ],
-    nutrition: { calories: 320, protein: '8g', carbs: '52g', fat: '9g', fiber: '2g' },
-    steps: [
-      { id: 1, instruction: 'In a large bowl, whisk together flour, sugar, baking powder, and salt.', image: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400' },
-      { id: 2, instruction: 'In another bowl, beat eggs and then add milk and melted butter. Mix well.', image: 'https://images.unsplash.com/photo-1587241321921-91a834d82ccb?w=400' },
-      { id: 3, instruction: 'Pour wet ingredients into dry ingredients and stir until just combined. Don\'t overmix!', image: 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400' },
-    ],
-  };
+  // --- UI LOADING & ERROR ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[var(--orange)]"></div>
+      </div>
+    );
+  }
 
+  if (!recipe) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <h2 className="text-2xl font-semibold text-gray-600">Không tìm thấy công thức này!</h2>
+      </div>
+    );
+  }
+
+  // --- UI CHÍNH (Giữ nguyên 100% bố cục và CSS) ---
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       {/* --- HERO SECTION --- */}
@@ -170,14 +194,14 @@ export default function RecipeDetailsPage() {
               <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-4 mb-6">
                 <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--green-medium)' }}>Nutrition per Serving</h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><div className="text-gray-600 text-xs">Calories</div><div className="font-semibold">{recipe.nutrition.calories}</div></div>
-                  <div><div className="text-gray-600 text-xs">Protein</div><div className="font-semibold">{recipe.nutrition.protein}</div></div>
-                  <div><div className="text-gray-600 text-xs">Carbs</div><div className="font-semibold">{recipe.nutrition.carbs}</div></div>
-                  <div><div className="text-gray-600 text-xs">Fat</div><div className="font-semibold">{recipe.nutrition.fat}</div></div>
+                  <div><div className="text-gray-600 text-xs">Calories</div><div className="font-semibold">{recipe.nutrition?.calories || 0}</div></div>
+                  <div><div className="text-gray-600 text-xs">Protein</div><div className="font-semibold">{recipe.nutrition?.protein || '0g'}</div></div>
+                  <div><div className="text-gray-600 text-xs">Carbs</div><div className="font-semibold">{recipe.nutrition?.carbs || '0g'}</div></div>
+                  <div><div className="text-gray-600 text-xs">Fat</div><div className="font-semibold">{recipe.nutrition?.fat || '0g'}</div></div>
                 </div>
               </div>
               <div className="space-y-3">
-                {recipe.ingredients.map((ingredient) => (
+                {recipe.ingredients?.map((ingredient: any) => (
                   <label key={ingredient.id} className="flex items-start gap-3 cursor-pointer group">
                     <input type="checkbox" checked={checkedIngredients.has(ingredient.id)} onChange={() => toggleIngredient(ingredient.id)} className="mt-1 w-5 h-5 rounded border-gray-300" style={{ accentColor: 'var(--green-medium)' }} />
                     <span className={`text-gray-700 transition-all ${checkedIngredients.has(ingredient.id) ? 'line-through text-gray-400' : 'group-hover:text-[var(--green-medium)]'}`}>
@@ -194,14 +218,16 @@ export default function RecipeDetailsPage() {
             <div className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="text-2xl font-semibold mb-6">Cooking Instructions</h2>
               <div className="space-y-6">
-                {recipe.steps.map((step) => (
+                {recipe.steps?.map((step: any) => (
                   <div key={step.id} className="flex gap-4">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" style={{ backgroundColor: 'var(--green-medium)' }}>
                       {step.id}
                     </div>
                     <div className="flex-1">
                       <p className="text-gray-700 leading-relaxed mb-3">{step.instruction}</p>
-                      <img src={step.image} alt={`Step ${step.id}`} className="w-full h-48 object-cover rounded-xl" />
+                      {step.image && (
+                        <img src={step.image} alt={`Step ${step.id}`} className="w-full h-48 object-cover rounded-xl" />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -210,7 +236,7 @@ export default function RecipeDetailsPage() {
           </div>
         </div>
         
-        {/* --- COMMUNITY INSIGHTS SECTION (NẰM DƯỚI CÙNG & CHIẾM TOÀN BỘ WIDTH) --- */}
+        {/* --- COMMUNITY INSIGHTS SECTION --- */}
         <div className="mt-8 bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-2xl font-semibold mb-6 border-b pb-4">Community Insights</h2>
           
@@ -266,11 +292,14 @@ export default function RecipeDetailsPage() {
                 </div>
               </div>
             ))}
+            {commentsList.length === 0 && (
+              <p className="text-gray-500 text-center py-4">Chưa có bình luận nào. Hãy là người đầu tiên bình luận!</p>
+            )}
           </div>
         </div>
       </div>
       
-      {/* AI Bot Button (Giữ nguyên) */}
+      {/* AI Bot Button */}
       <button onClick={() => setShowAIChat(!showAIChat)} className="fixed bottom-8 right-8 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 z-50" style={{ backgroundColor: 'var(--orange)' }}>
         <MessageCircle className="w-7 h-7 text-white" />
       </button>
