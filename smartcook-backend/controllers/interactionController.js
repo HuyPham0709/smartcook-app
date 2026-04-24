@@ -1,4 +1,5 @@
 const { sql, poolPromise } = require('../config/db');
+const socketService = require('../services/socket.service'); // THÊM IMPORT SOCKET SERVICE
 
 const interactionController = {
     // 1. Toggle Like (Thích / Bỏ thích)
@@ -27,6 +28,36 @@ const interactionController = {
                     .input('userId', sql.Int, userId)
                     .input('recipeId', sql.Int, recipeId)
                     .query('INSERT INTO Likes (UserID, RecipeID) VALUES (@userId, @recipeId)');
+
+                // 🔥 REAL-TIME: XỬ LÝ THÔNG BÁO CHO TÁC GIẢ
+                const userRes = await pool.request().input('uid', sql.Int, userId).query('SELECT FullName, AvatarURL FROM Users WHERE ID = @uid');
+                const currentUser = userRes.recordset[0];
+                
+                const recipeRes = await pool.request().input('rid', sql.Int, recipeId).query('SELECT UserID, Title FROM Recipes WHERE ID = @rid');
+                const authorId = recipeRes.recordset[0]?.UserID;
+                const recipeTitle = recipeRes.recordset[0]?.Title;
+
+                if (authorId && authorId !== userId) { // Không tự thông báo cho chính mình
+                    const message = `${currentUser.FullName} đã thích công thức "${recipeTitle}" của bạn`;
+                    
+                    // Lưu DB
+                    await pool.request()
+                        .input('authorId', sql.Int, authorId)
+                        .input('senderId', sql.Int, userId)
+                        .input('type', sql.NVarChar, 'LIKE')
+                        .input('recipeId', sql.Int, recipeId)
+                        .input('msg', sql.NVarChar, message)
+                        .query(`INSERT INTO Notifications (UserID, SenderID, Type, RecipeID, Message) VALUES (@authorId, @senderId, @type, @recipeId, @msg)`);
+
+                    // Phát Socket.io
+                    socketService.sendNotification(authorId, {
+                        type: 'LIKE',
+                        message: message,
+                        avatar: currentUser.AvatarURL,
+                        time: 'Vừa xong'
+                    });
+                }
+
                 return res.json({ success: true, message: 'Đã thích công thức', isLiked: true });
             }
         } catch (error) {
@@ -51,11 +82,38 @@ const interactionController = {
                 .input('userId', sql.Int, userId)
                 .input('recipeId', sql.Int, recipeId)
                 .input('content', sql.NVarChar, content)
-                .input('parentId', sql.Int, parentCommentId || null) // Hỗ trợ reply (tùy chọn)
+                .input('parentId', sql.Int, parentCommentId || null)
                 .query(`
                     INSERT INTO Comments (UserID, RecipeID, Content, ParentCommentID) 
                     VALUES (@userId, @recipeId, @content, @parentId)
                 `);
+
+            // 🔥 REAL-TIME: XỬ LÝ THÔNG BÁO CHO TÁC GIẢ
+            const userRes = await pool.request().input('uid', sql.Int, userId).query('SELECT FullName, AvatarURL FROM Users WHERE ID = @uid');
+            const currentUser = userRes.recordset[0];
+            
+            const recipeRes = await pool.request().input('rid', sql.Int, recipeId).query('SELECT UserID, Title FROM Recipes WHERE ID = @rid');
+            const authorId = recipeRes.recordset[0]?.UserID;
+            const recipeTitle = recipeRes.recordset[0]?.Title;
+
+            if (authorId && authorId !== userId) {
+                const message = `${currentUser.FullName} đã bình luận: "${content}" trong công thức "${recipeTitle}"`;
+                
+                await pool.request()
+                    .input('authorId', sql.Int, authorId)
+                    .input('senderId', sql.Int, userId)
+                    .input('type', sql.NVarChar, 'COMMENT')
+                    .input('recipeId', sql.Int, recipeId)
+                    .input('msg', sql.NVarChar, message)
+                    .query(`INSERT INTO Notifications (UserID, SenderID, Type, RecipeID, Message) VALUES (@authorId, @senderId, @type, @recipeId, @msg)`);
+
+                socketService.sendNotification(authorId, {
+                    type: 'COMMENT',
+                    message: message,
+                    avatar: currentUser.AvatarURL,
+                    time: 'Vừa xong'
+                });
+            }
 
             res.json({ success: true, message: 'Đã thêm bình luận' });
         } catch (error) {
@@ -77,14 +135,12 @@ const interactionController = {
 
             const pool = await poolPromise;
 
-            // Kiểm tra xem user đã đánh giá công thức này chưa (Mỗi user chỉ 1 rating/1 recipe)
             const checkRating = await pool.request()
                 .input('userId', sql.Int, userId)
                 .input('recipeId', sql.Int, recipeId)
                 .query('SELECT ID FROM Ratings WHERE UserID = @userId AND RecipeID = @recipeId');
 
             if (checkRating.recordset.length > 0) {
-                // Đã đánh giá -> Update
                 await pool.request()
                     .input('userId', sql.Int, userId)
                     .input('recipeId', sql.Int, recipeId)
@@ -96,7 +152,6 @@ const interactionController = {
                         WHERE UserID = @userId AND RecipeID = @recipeId
                     `);
             } else {
-                // Chưa đánh giá -> Insert
                 await pool.request()
                     .input('userId', sql.Int, userId)
                     .input('recipeId', sql.Int, recipeId)
@@ -106,6 +161,33 @@ const interactionController = {
                         INSERT INTO Ratings (UserID, RecipeID, Score, Comment) 
                         VALUES (@userId, @recipeId, @score, @comment)
                     `);
+            }
+
+            // 🔥 REAL-TIME: XỬ LÝ THÔNG BÁO CHO TÁC GIẢ
+            const userRes = await pool.request().input('uid', sql.Int, userId).query('SELECT FullName, AvatarURL FROM Users WHERE ID = @uid');
+            const currentUser = userRes.recordset[0];
+            
+            const recipeRes = await pool.request().input('rid', sql.Int, recipeId).query('SELECT UserID, Title FROM Recipes WHERE ID = @rid');
+            const authorId = recipeRes.recordset[0]?.UserID;
+            const recipeTitle = recipeRes.recordset[0]?.Title;
+
+            if (authorId && authorId !== userId) {
+                const message = `${currentUser.FullName} đã đánh giá ${score} sao cho công thức "${recipeTitle}"`;
+                
+                await pool.request()
+                    .input('authorId', sql.Int, authorId)
+                    .input('senderId', sql.Int, userId)
+                    .input('type', sql.NVarChar, 'RATING')
+                    .input('recipeId', sql.Int, recipeId)
+                    .input('msg', sql.NVarChar, message)
+                    .query(`INSERT INTO Notifications (UserID, SenderID, Type, RecipeID, Message) VALUES (@authorId, @senderId, @type, @recipeId, @msg)`);
+
+                socketService.sendNotification(authorId, {
+                    type: 'RATING',
+                    message: message,
+                    avatar: currentUser.AvatarURL,
+                    time: 'Vừa xong'
+                });
             }
 
             res.json({ success: true, message: 'Đã lưu đánh giá' });

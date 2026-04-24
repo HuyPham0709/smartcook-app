@@ -1,28 +1,30 @@
 const express = require('express');
-const cors = require('cors'); // Phải có thư viện này
+const cors = require('cors');
+const http = require('http'); // THÊM DÒNG NÀY
+const socketService = require('./services/socket.service'); // THÊM DÒNG NÀY
 
-// Import các routes
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const recipeRoutes = require('./routes/recipeRoutes');
 const interactionRoutes = require('./routes/interactionRoutes');
+
 const app = express();
-
-// 1. Cấu hình CORS để cho phép Frontend (React) gọi API
 app.use(cors());
-
-// 2. Middleware để đọc dữ liệu JSON
 app.use(express.json());
 
-// 3. Đăng ký các API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipeRoutes);
 app.use('/api/interactions', interactionRoutes);
-// 4. Khởi động server
+
+// KHỞI TẠO HTTP SERVER VÀ SOCKET
+const server = http.createServer(app);
+socketService.init(server); // Khởi động Socket
+
 const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server Backend đang chạy tại http://localhost:${PORT}`);
+// Sửa app.listen thành server.listen
+server.listen(PORT, () => {
+    console.log(`🚀 Server Backend và Socket.io đang chạy tại http://localhost:${PORT}`);
 });

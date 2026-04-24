@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Clock, Users, ChefHat, CheckCircle, Play, MessageCircle, Sparkles, Heart, Star, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import { recipeApi } from '../../api/recipeApi'; // Import API lấy dữ liệu
-import { interactionApi } from '../../api/interactionApi'; // Mở comment này ra khi có API thật
+import { recipeApi } from '../../api/recipeApi'; 
+import { interactionApi } from '../../api/interactionApi'; 
 
 export default function RecipeDetailsPage() {
   const { recipeId } = useParams();
   
   // --- STATES DỮ LIỆU TỪ SQL ---
-  const [recipe, setRecipe] = useState<any>(null); // State chứa thông tin công thức
-  const [isLoading, setIsLoading] = useState(true); // State loading
+  const [recipe, setRecipe] = useState<any>(null); 
+  const [isLoading, setIsLoading] = useState(true); 
+  const [currentUser, setCurrentUser] = useState<any>(null); // Lưu thông tin người đang đăng nhập
 
   // --- STATES TƯƠNG TÁC ---
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
@@ -18,11 +19,13 @@ export default function RecipeDetailsPage() {
   
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  
   const [commentText, setCommentText] = useState('');
-  const [userRating, setUserRating] = useState(0); 
   const [commentsList, setCommentsList] = useState<any[]>([]);
+  const [userRating, setUserRating] = useState(0); 
+  const [isSubmitting, setIsSubmitting] = useState(false); // State chống spam comment
 
-// --- GỌI API FETCH DATA TỪ BACKEND ---
+  // --- GỌI API FETCH DATA TỪ BACKEND ---
   useEffect(() => {
     const fetchRecipeData = async () => {
       if (!recipeId) return;
@@ -31,19 +34,20 @@ export default function RecipeDetailsPage() {
         
         // 1. Lấy thông tin User hiện tại từ LocalStorage
         const storedUser = localStorage.getItem('user');
-        const currentUser = storedUser ? JSON.parse(storedUser) : null;
+        const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+        setCurrentUser(parsedUser);
 
         // 2. Gọi API kèm userId
-        const data = await recipeApi.getRecipeDetails(recipeId, currentUser?.id);
+        const data = await recipeApi.getRecipeDetails(recipeId, parsedUser?.id);
         
         // 3. Đổ dữ liệu từ SQL vào State
         setRecipe(data);
         
         // --- CẬP NHẬT TRẠNG THÁI TƯƠNG TÁC TỪ SQL ---
-        setLikesCount(data.likesCount);
-        setIsLiked(data.isLiked);           // Trạng thái nút Tim (đỏ hay trắng)
-        setUserRating(data.userRating);     // Số sao user này đã rate trước đó
-        setCommentsList(data.comments);     // Danh sách bình luận
+        setLikesCount(data.likesCount || 0);
+        setIsLiked(data.isLiked || false);          
+        setUserRating(data.userRating || 0);    
+        setCommentsList(data.comments || []);   
         
       } catch (error) {
         console.error("Lỗi fetch recipe:", error);
@@ -56,31 +60,54 @@ export default function RecipeDetailsPage() {
     fetchRecipeData();
   }, [recipeId]);
 
-  // --- HÀM XỬ LÝ (Giữ nguyên logic cũ) ---
+  // --- HÀM XỬ LÝ ---
+  
+  // 1. Xử lý Like (Cập nhật UI mượt mà lập tức)
   const handleToggleLike = async () => {
-    try {
-      setIsLiked(!isLiked);
-      setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
-      await interactionApi.toggleLike(recipeId);
-    } catch (error) {
-      setIsLiked(!isLiked);
-      setLikesCount(prev => isLiked ? prev + 1 : prev - 1);
+    if (!currentUser) {
       toast.error("Vui lòng đăng nhập để thực hiện chức năng này!");
+      return;
+    }
+
+    // Lưu lại state cũ phòng khi lỗi mạng
+    const previousIsLiked = isLiked;
+    const previousLikesCount = likesCount;
+
+    // Cập nhật UI ngay lập tức
+    setIsLiked(!isLiked);
+    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+
+    try {
+      if (recipeId) {
+        await interactionApi.toggleLike(recipeId);
+      }
+    } catch (error) {
+      // Revert lại nếu gọi API thất bại
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousLikesCount);
+      toast.error("Có lỗi xảy ra khi thả tim!");
     }
   };
 
+  // 2. Xử lý Gửi Bình Luận (Có chống spam và hiện ngay lập tức)
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+    if (!commentText.trim() || isSubmitting || !recipeId) return;
 
+    if (!currentUser) {
+      toast.error("Vui lòng đăng nhập để bình luận!");
+      return;
+    }
+
+    setIsSubmitting(true); // Khóa nút Gửi
     try {
-      await interactionApi.addComment(recipeId, { content: commentText }); // Tạm ẩn API
+      await interactionApi.addComment(recipeId, { content: commentText }); 
       
-      // Cập nhật UI ngay lập tức
+      // Cập nhật UI ngay lập tức với thông tin user thật
       const newComment = {
         id: Date.now(),
-        user: 'Bạn', 
-        avatar: 'https://ui-avatars.com/api/?name=User&background=random',
+        user: currentUser.FullName || currentUser.name || 'Bạn', 
+        avatar: currentUser.AvatarURL || currentUser.avatar || 'https://ui-avatars.com/api/?name=User&background=random',
         content: commentText,
         rating: userRating || 5,
         time: 'Vừa xong'
@@ -91,14 +118,24 @@ export default function RecipeDetailsPage() {
       toast.success("Bình luận của bạn đã được gửi!");
     } catch (error) {
       toast.error("Có lỗi xảy ra, vui lòng thử lại!");
+    } finally {
+      setIsSubmitting(false); // Mở khóa nút gửi
     }
   };
 
+  // 3. Xử lý Đánh giá sao
   const handleRating = async (score: number) => {
+    if (!currentUser) {
+      toast.error("Vui lòng đăng nhập để đánh giá!");
+      return;
+    }
+    
     try {
       setUserRating(score);
-      await interactionApi.addRating(recipeId, { score, comment: "Tuyệt vời" });
-      toast.success(`Đã đánh giá ${score} sao!`);
+      if (recipeId) {
+        await interactionApi.addRating(recipeId, { score, comment: "Đánh giá từ người dùng" });
+        toast.success(`Đã đánh giá ${score} sao!`);
+      }
     } catch (error) {
       toast.error("Lỗi khi gửi đánh giá.");
     }
@@ -131,7 +168,7 @@ export default function RecipeDetailsPage() {
     );
   }
 
-  // --- UI CHÍNH (Giữ nguyên 100% bố cục và CSS) ---
+  // --- UI CHÍNH ---
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       {/* --- HERO SECTION --- */}
@@ -182,7 +219,7 @@ export default function RecipeDetailsPage() {
         {/* BỐ CỤC CHÍNH (GRID): BÊN TRÁI INGREDIENTS - BÊN PHẢI INSTRUCTIONS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* CỘT TRÁI: INGREDIENTS (Chiếm 1/3) */}
+          {/* CỘT TRÁI: INGREDIENTS */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-md p-6 sticky top-24">
               <div className="flex items-center justify-between mb-4">
@@ -213,7 +250,7 @@ export default function RecipeDetailsPage() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: INSTRUCTIONS (Chiếm 2/3) */}
+          {/* CỘT PHẢI: INSTRUCTIONS */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="text-2xl font-semibold mb-6">Cooking Instructions</h2>
@@ -264,9 +301,16 @@ export default function RecipeDetailsPage() {
                   placeholder="What do you think about this recipe?"
                   className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent resize-none"
                   rows={3}
+                  disabled={isSubmitting}
                 />
-                <button type="submit" disabled={!commentText.trim()} className="self-end flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition disabled:opacity-50" style={{ backgroundColor: 'var(--green-medium)' }}>
-                  <Send className="w-4 h-4" /> Post Comment
+                <button 
+                  type="submit" 
+                  disabled={!commentText.trim() || isSubmitting} 
+                  className="self-end flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition disabled:opacity-50" 
+                  style={{ backgroundColor: 'var(--green-medium)' }}
+                >
+                  <Send className="w-4 h-4" /> 
+                  {isSubmitting ? 'Đang gửi...' : 'Post Comment'}
                 </button>
               </form>
             </div>

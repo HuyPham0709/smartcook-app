@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom"; // Thêm useLocation
+import { Outlet, Link, useLocation } from "react-router-dom"; 
 import { X } from "lucide-react";
 import UserSidebar from "./UserSidebar";
 import Header from "./Header"; 
 import Footer from "./Footer";
+import { Toaster } from 'sonner';
+import { useSocket } from "../hooks/useSocket"; // 🔥 IMPORT HOOK SOCKET
 
-const currentUser = {
+// Dữ liệu mock dùng dự phòng nếu chưa load kịp
+const mockUser = {
   name: "Sarah Johnson",
   email: "sarah.johnson@example.com",
   avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
@@ -14,41 +17,56 @@ const currentUser = {
 export default function UserLayout() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const location = useLocation(); // Hook lấy đường dẫn hiện tại
+  const location = useLocation();
 
-  // LOGIC MỚI: Kiểm tra token để xác định trạng thái đăng nhập
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return !!localStorage.getItem("accessToken");
   });
 
-  // ĐÃ THÊM: Theo dõi mỗi khi URL đổi (ví dụ chuyển từ trang Login sang trang chủ)
-  // để cập nhật lại biến isLoggedIn lập tức.
+  // State lưu trữ dữ liệu User thật
+  const [currentUser, setCurrentUser] = useState<any>(mockUser);
+
   useEffect(() => {
     const checkAuthStatus = () => {
       const token = localStorage.getItem("accessToken");
+      const userStr = localStorage.getItem("user");
+      
       setIsLoggedIn(!!token);
+      
+      // Lấy dữ liệu user thật từ localStorage để truyền cho Header và Socket
+      if (userStr) {
+        try {
+          setCurrentUser(JSON.parse(userStr));
+        } catch (error) {
+          setCurrentUser(mockUser);
+        }
+      } else {
+        setCurrentUser(mockUser);
+      }
     };
     
-    // Gọi kiểm tra mỗi khi chuyển route
     checkAuthStatus();
     
-    // Lắng nghe thêm sự kiện thay đổi localStorage từ tab khác (nếu có)
     window.addEventListener('storage', checkAuthStatus);
     return () => {
       window.removeEventListener('storage', checkAuthStatus);
     };
   }, [location.pathname]);
 
-  // LOGIC MỚI: Hàm logout thực thụ
+  // 🔥 GỌI HOOK SOCKET.IO (Chỉ kết nối khi currentUser.id tồn tại)
+  useSocket(currentUser?.id);
+
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
-    localStorage.removeItem("temp_user_id"); // Xóa luôn các dữ liệu tạm nếu có
+    localStorage.removeItem("temp_user_id"); 
+    localStorage.removeItem("user"); // Xóa user info
     setIsLoggedIn(false);
-    window.location.href = "/"; // Reset lại trang để xóa sạch state cũ
+    window.location.href = "/"; 
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <Toaster position="top-right" richColors />
       <UserSidebar 
         isExpanded={isExpanded} 
         setIsExpanded={setIsExpanded} 
@@ -58,9 +76,9 @@ export default function UserLayout() {
       <div className={`flex flex-col min-h-screen flex-1 transition-all duration-300 ease-in-out ${isExpanded ? "ml-72" : "ml-20"}`}>
         <Header 
           isLoggedIn={isLoggedIn} 
-          currentUser={currentUser} 
+          currentUser={currentUser} // Bây giờ Header sẽ hiển thị tên và avatar thật!
           onOpenLoginModal={() => setShowLoginModal(true)} 
-          onLogout={handleLogout} // TRUYỀN HÀM LOGOUT XUỐNG
+          onLogout={handleLogout} 
         />
 
         <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
@@ -69,7 +87,7 @@ export default function UserLayout() {
         <Footer />
       </div>
 
-      {/* Modal Đăng nhập (Giữ lại ở Layout để dùng chung) */}
+      {/* Modal Đăng nhập */}
       {showLoginModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div 
