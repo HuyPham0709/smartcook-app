@@ -1,44 +1,51 @@
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken'); // Cần để xác thực token
 
-// Lưu trữ map giữa userId và socketId (VD: { 20 => 'aXbCdEF123' })
 const onlineUsers = new Map();
 let io;
 
 module.exports = {
     init: (server) => {
         io = new Server(server, {
-            cors: { origin: "*", methods: ["GET", "POST"] } // Cho phép Frontend kết nối
+            cors: { origin: "*", methods: ["GET", "POST"] }
+        });
+
+        // --- BẢO MẬT: MIDDLEWARE XÁC THỰC ---
+        io.use((socket, next) => {
+            const token = socket.handshake.auth.token; // Lấy token từ Frontend gửi lên
+
+            if (!token) {
+                return next(new Error("Authentication error: No token provided"));
+            }
+
+           jwt.verify(token, process.env.JWT_SECRET || 'secret_key_tam_thoi', async (err, decoded) => {
+                if (err) return next(new Error("Authentication error: Invalid token"));
+                
+                // Lưu thông tin user vào chính object socket để dùng sau này
+                socket.user = decoded; 
+                next();
+            });
         });
 
         io.on('connection', (socket) => {
-            console.log(`⚡ Client kết nối: ${socket.id}`);
+            // Lấy userId trực tiếp từ Token đã verify, không tin tưởng vào client gửi lên
+            const userId = socket.user.userId; 
+            
+            onlineUsers.set(userId.toString(), socket.id);
+            console.log(`✅ Bảo mật: User ${userId} đã kết nối an toàn`);
 
-            // Khi user đăng nhập, frontend sẽ gửi sự kiện 'user_online' kèm userId
-            socket.on('user_online', (userId) => {
-                onlineUsers.set(userId.toString(), socket.id);
-                console.log(`👤 User ${userId} online với socket: ${socket.id}`);
-            });
-
-            // Khi user ngắt kết nối
             socket.on('disconnect', () => {
-                for (let [userId, socketId] of onlineUsers.entries()) {
-                    if (socketId === socket.id) {
-                        onlineUsers.delete(userId);
-                        console.log(`💤 User ${userId} đã offline`);
-                        break;
-                    }
-                }
+                onlineUsers.delete(userId.toString());
+                console.log(`💤 User ${userId} đã ngắt kết nối`);
             });
         });
     },
 
-    // Hàm dùng để gọi từ Controller bắn thông báo cho User cụ thể
     sendNotification: (userId, notificationData) => {
         if (!io) return;
         const socketId = onlineUsers.get(userId.toString());
         if (socketId) {
-            // Nếu user đang online, bắn sự kiện ngay lập tức
-            io.to(socketId).emit('NEW_NOTIFICATION', notificationData);
+            io.to(socketId).emit('new_notification', notificationData);
         }
     }
 };

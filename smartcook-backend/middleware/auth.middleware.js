@@ -12,7 +12,6 @@ const verifyToken = (req, res, next) => {
         if (err) return res.status(403).json({ message: 'Token đã hết hạn hoặc không hợp lệ!' });
         
         try {
-            // -- THÊM LOGIC KIỂM TRA BANNED TẠI ĐÂY --
             const pool = await poolPromise;
             const result = await pool.request()
                 // Theo comment của bạn, decoded chứa userId

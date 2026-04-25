@@ -5,9 +5,9 @@ import UserSidebar from "./UserSidebar";
 import Header from "./Header"; 
 import Footer from "./Footer";
 import { Toaster } from 'sonner';
-import { useSocket } from "../hooks/useSocket"; // 🔥 IMPORT HOOK SOCKET
+import { socket } from "../socket";
+import { useSocket } from "../hooks/useSocket"; 
 
-// Dữ liệu mock dùng dự phòng nếu chưa load kịp
 const mockUser = {
   name: "Sarah Johnson",
   email: "sarah.johnson@example.com",
@@ -23,9 +23,11 @@ export default function UserLayout() {
     return !!localStorage.getItem("accessToken");
   });
 
-  // State lưu trữ dữ liệu User thật
   const [currentUser, setCurrentUser] = useState<any>(mockUser);
 
+  // ==========================================
+  // 1. useEffect SỐ 1: KIỂM TRA ĐĂNG NHẬP
+  // ==========================================
   useEffect(() => {
     const checkAuthStatus = () => {
       const token = localStorage.getItem("accessToken");
@@ -33,7 +35,6 @@ export default function UserLayout() {
       
       setIsLoggedIn(!!token);
       
-      // Lấy dữ liệu user thật từ localStorage để truyền cho Header và Socket
       if (userStr) {
         try {
           setCurrentUser(JSON.parse(userStr));
@@ -53,13 +54,30 @@ export default function UserLayout() {
     };
   }, [location.pathname]);
 
-  // 🔥 GỌI HOOK SOCKET.IO (Chỉ kết nối khi currentUser.id tồn tại)
+  // ==========================================
+  // 2. useEffect SỐ 2: BẢO MẬT SOCKET (Nằm ngang hàng)
+  // ==========================================
+  useEffect(() => {
+    if (isLoggedIn) {
+      const token = localStorage.getItem("accessToken");
+      socket.auth = { token }; 
+      socket.connect();
+    } else {
+      socket.disconnect();
+    }
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [isLoggedIn]);
+
+  // GỌI HOOK HIỂN THỊ TOAST (Nằm ngang hàng)
   useSocket(currentUser?.id);
 
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("temp_user_id"); 
-    localStorage.removeItem("user"); // Xóa user info
+    localStorage.removeItem("user"); 
     setIsLoggedIn(false);
     window.location.href = "/"; 
   };
@@ -76,7 +94,7 @@ export default function UserLayout() {
       <div className={`flex flex-col min-h-screen flex-1 transition-all duration-300 ease-in-out ${isExpanded ? "ml-72" : "ml-20"}`}>
         <Header 
           isLoggedIn={isLoggedIn} 
-          currentUser={currentUser} // Bây giờ Header sẽ hiển thị tên và avatar thật!
+          currentUser={currentUser} 
           onOpenLoginModal={() => setShowLoginModal(true)} 
           onLogout={handleLogout} 
         />
@@ -87,7 +105,6 @@ export default function UserLayout() {
         <Footer />
       </div>
 
-      {/* Modal Đăng nhập */}
       {showLoginModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div 
@@ -98,7 +115,6 @@ export default function UserLayout() {
             <button 
               onClick={() => setShowLoginModal(false)}
               className="absolute right-4 top-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-              aria-label="Close Login Modal"
             >
               <X className="w-5 h-5 text-gray-400" />
             </button>
