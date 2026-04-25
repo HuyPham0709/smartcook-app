@@ -87,19 +87,35 @@ exports.createRecipe = async (req, res) => {
 exports.getAllRecipes = async (req, res) => {
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query(`
-            SELECT 
-                r.ID as id, 
-                r.Title as title, 
-                r.ThumbnailURL as image, 
-                r.CookingTime as prepTime,
-                u.FullName as authorName,
-                u.AvatarURL as authorAvatar,
-                u.RoleID as roleId
-            FROM Recipes r
-            LEFT JOIN Users u ON r.UserID = u.ID
-            ORDER BY r.CreatedAt DESC
-        `);
+
+        // Lấy page và limit từ query parameters, mặc định page 1, limit 6
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 6;
+        const offset = (page - 1) * limit;
+
+        // 1. Lấy tổng số lượng công thức (Total Count)
+        const countResult = await pool.request().query('SELECT COUNT(*) as Total FROM Recipes');
+        const totalCount = countResult.recordset[0].Total;
+        const totalPages = Math.ceil(totalCount / limit);
+
+        // 2. Truy vấn danh sách có phân trang bằng OFFSET và FETCH NEXT (Chuẩn SQL Server)
+        const result = await pool.request()
+            .input('offset', sql.Int, offset)
+            .input('limit', sql.Int, limit)
+            .query(`
+                SELECT 
+                    r.ID as id, 
+                    r.Title as title, 
+                    r.ThumbnailURL as image, 
+                    r.CookingTime as prepTime,
+                    u.FullName as authorName,
+                    u.AvatarURL as authorAvatar,
+                    u.RoleID as roleId
+                FROM Recipes r
+                LEFT JOIN Users u ON r.UserID = u.ID
+                ORDER BY r.CreatedAt DESC
+                OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+            `);
 
         const formattedRecipes = result.recordset.map(row => ({
             id: row.id,
@@ -116,7 +132,13 @@ exports.getAllRecipes = async (req, res) => {
             remixes: 0
         }));
 
-        res.status(200).json(formattedRecipes);
+        // 3. Trả về format chuẩn phân trang
+        res.status(200).json({
+            data: formattedRecipes,
+            totalCount,
+            totalPages,
+            currentPage: page
+        });
     } catch (error) {
         console.error('Lỗi khi lấy danh sách recipes:', error);
         res.status(500).json({ message: 'Lỗi server khi lấy dữ liệu' });
