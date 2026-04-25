@@ -161,16 +161,22 @@ CREATE TABLE Comments (
 );
 
 -- 6. MODULE: THÔNG BÁO & AI LOGS
+-- Đã gộp và sửa chữa bảng Notifications hoàn chỉnh, thêm SenderName, SenderAvatar
 CREATE TABLE Notifications (
     ID INT PRIMARY KEY IDENTITY(1,1),
-    UserID INT NOT NULL,
-    Type NVARCHAR(50), -- 'Like', 'Comment', 'Follow', 'System'
+    UserID INT NOT NULL,           -- Người nhận thông báo (Tác giả món ăn)
+    SenderID INT NULL,             -- Người thực hiện hành động (Có thể Null nếu là System)
+    SenderName NVARCHAR(255) NULL, -- Tên người tương tác
+    SenderAvatar NVARCHAR(MAX) NULL, -- Ảnh đại diện người tương tác
+    Type NVARCHAR(50),             -- Loại: 'LIKE', 'COMMENT', 'RATING', 'SYSTEM'
+    RecipeID INT NULL,             -- Món ăn liên quan
     Message NVARCHAR(MAX),
     IsRead BIT DEFAULT 0,
-    RelatedID INT, -- ID của Recipe hoặc Comment liên quan
     CreatedAt DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
     
-    CONSTRAINT FK_Noti_User FOREIGN KEY (UserID) REFERENCES Users(ID) ON DELETE CASCADE
+    CONSTRAINT FK_Notif_User FOREIGN KEY (UserID) REFERENCES Users(ID),
+    CONSTRAINT FK_Notif_Sender FOREIGN KEY (SenderID) REFERENCES Users(ID),
+    CONSTRAINT FK_Notif_Recipe FOREIGN KEY (RecipeID) REFERENCES Recipes(ID) ON DELETE CASCADE
 );
 
 CREATE TABLE AILogs (
@@ -214,20 +220,16 @@ CREATE INDEX IX_Ingredient_Name ON Ingredients(Name);
 CREATE INDEX IX_Noti_User_Unread ON Notifications(UserID, IsRead);
 GO
 
--- Thêm cột lưu số lần bị cảnh cáo
+-- 9. CÁC CẬP NHẬT BỔ SUNG
+-- Cập nhật bảng Users
 ALTER TABLE Users ADD WarningCount INT DEFAULT 0;
-
--- Thêm cột lưu thời hạn khóa tài khoản (Null = Không khóa)
 ALTER TABLE Users ADD BanUntil DATETIMEOFFSET NULL;
-
 ALTER TABLE Users ADD BanReason NVARCHAR(500) NULL;
-
--- Thêm cột active với giá trị mặc định là 1 (Hoạt động)
 ALTER TABLE Users ADD active INT DEFAULT 1;
 GO
 
--- Cập nhật tất cả user cũ đang có trong DB thành 1
 UPDATE Users SET active = 1 WHERE active IS NULL;
+
 -- Bổ sung bảng Badges và UserBadges
 CREATE TABLE Badges (
     ID INT PRIMARY KEY IDENTITY(1,1),
@@ -252,7 +254,7 @@ INSERT INTO Badges (Name, Icon, Description, Color) VALUES
 ('Recipe Master', '👨‍🍳', '10 published recipes', '#FF8C42'),
 ('Community Favorite', '❤️', '1000+ total likes', '#EF4444');
 
--- (Tuỳ chọn) Bảng lưu công thức (Saved/Bookmarked Recipes)
+-- Bảng lưu công thức (Saved/Bookmarked Recipes)
 CREATE TABLE SavedRecipes (
     UserID INT NOT NULL,
     RecipeID INT NOT NULL,
@@ -262,12 +264,13 @@ CREATE TABLE SavedRecipes (
     CONSTRAINT FK_Saved_Recipe FOREIGN KEY (RecipeID) REFERENCES Recipes(ID) ON DELETE CASCADE
 );
 
--- Thêm cột lưu chữ ký số vào bảng Recipes
-ALTER TABLE Recipes 
-ADD DigitalSignature NVARCHAR(MAX) NULL;
--- 9. DỮ LIỆU MẪU CHO ROLE
+-- Đã sửa lỗi câu lệnh ALTER bị đứt đôi
+ALTER TABLE Recipes ADD DigitalSignature NVARCHAR(MAX) NULL;
+
+-- DỮ LIỆU MẪU CHO ROLE
 INSERT INTO Roles (RoleName, Description) VALUES 
 ('Admin', 'Toàn quyền hệ thống'),
 ('Moderator', 'Kiểm duyệt nội dung'),
 ('User', 'Người dùng thông thường'),
 ('KOL', 'Đầu bếp nổi tiếng/Đã xác minh');
+GO
