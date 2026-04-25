@@ -267,13 +267,14 @@ ALTER TABLE Recipes
 
 CREATE TABLE Notifications (
     ID INT PRIMARY KEY IDENTITY(1,1),
-    UserID INT NOT NULL, -- Người nhận thông báo (Tác giả món ăn)
-    SenderID INT NOT NULL, -- Người thực hiện hành động (Người thả tim/comment)
-    Type NVARCHAR(50), -- Loại: 'LIKE', 'COMMENT', 'RATING'
-    RecipeID INT NULL, -- Món ăn liên quan
+    UserID INT NOT NULL,           -- Người nhận thông báo (Tác giả món ăn)
+    SenderID INT NOT NULL,         -- Người thực hiện hành động (Người thả tim/comment)
+    Type NVARCHAR(50),             -- Loại: 'LIKE', 'COMMENT', 'RATING'
+    RecipeID INT NULL,             -- Món ăn liên quan
     Message NVARCHAR(255),
     IsRead BIT DEFAULT 0,
     CreatedAt DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    
     CONSTRAINT FK_Notif_User FOREIGN KEY (UserID) REFERENCES Users(ID),
     CONSTRAINT FK_Notif_Sender FOREIGN KEY (SenderID) REFERENCES Users(ID),
     CONSTRAINT FK_Notif_Recipe FOREIGN KEY (RecipeID) REFERENCES Recipes(ID) ON DELETE CASCADE

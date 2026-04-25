@@ -195,6 +195,37 @@ const interactionController = {
             console.error('Lỗi addRating:', error);
             res.status(500).json({ success: false, message: 'Lỗi server' });
         }
+    },
+    getNotifications: async (req, res) => {
+        try {
+            const userId = req.user.userId;
+            const pool = await poolPromise;
+            const result = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`
+                    SELECT n.*, u.FullName as SenderName, u.AvatarURL as SenderAvatar
+                    FROM Notifications n
+                    JOIN Users u ON n.SenderID = u.ID
+                    WHERE n.UserID = @userId
+                    ORDER BY n.CreatedAt DESC
+                `);
+            res.json(result.recordset);
+        } catch (error) {
+            res.status(500).json({ message: 'Lỗi lấy thông báo' });
+        }
+    },
+
+    markAsRead: async (req, res) => {
+        try {
+            const userId = req.user.userId;
+            const pool = await poolPromise;
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .query('UPDATE Notifications SET IsRead = 1 WHERE UserID = @userId');
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ message: 'Lỗi cập nhật' });
+        }
     }
 };
 

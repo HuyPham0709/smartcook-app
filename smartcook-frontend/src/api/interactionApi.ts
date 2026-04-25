@@ -12,5 +12,11 @@ export const interactionApi = {
 
   addRating: (recipeId: number | string, data: RatingPayload) => {
     return axiosClient.post(`/interactions/${recipeId}/rating`, data);
+  },
+  getNotifications: () => {
+    return axiosClient.get('/interactions/notifications');
+  },
+  markAsRead: () => {
+      return axiosClient.put('/interactions/notifications/mark-read');
   }
 };
