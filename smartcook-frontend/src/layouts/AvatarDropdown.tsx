@@ -39,9 +39,7 @@ useEffect(() => {
   const fetchUserProfile = async () => {
     try {
       setIsLoading(true);
-      const data = await authApi.getProfile();
-      console.log("Data nhận được từ API:", data); // Kiểm tra xem data có id/name không
-      
+      const data = await authApi.getProfile();  
       if (data && data.id) {
         setUser(data);
       } else {

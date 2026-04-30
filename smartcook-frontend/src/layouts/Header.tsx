@@ -18,7 +18,15 @@ export default function Header({ isLoggedIn, currentUser, onLogout }: HeaderProp
   const [showNotif, setShowNotif] = useState(false);
   // Đếm số thông báo chưa đọc (bảo vệ chống crash bằng || [])
   const unreadCount = (notifications || []).filter(n => !n.IsRead).length;
-
+  const getValidValue = (val: any) => {
+    if (Array.isArray(val)) {
+        // Lấy các giá trị không bị null/undefined
+        const validItems = val.filter(item => item); 
+        // Ưu tiên lấy phần tử cuối (là dữ liệu từ bảng Users chuẩn xác nhất)
+        return validItems[validItems.length - 1] || null; 
+    }
+    return val;
+};
   // 1. Lấy thông báo lần đầu khi load trang
   useEffect(() => {
     if (isLoggedIn) {
@@ -30,13 +38,27 @@ export default function Header({ isLoggedIn, currentUser, onLogout }: HeaderProp
   useEffect(() => {
     if (isLoggedIn) {
       socket.on('new_notification', (data) => {
-        setNotifications(prev => [data, ...(prev || [])]);
+        setNotifications(prev => {
+          const currentNotifs = prev || [];
+          
+          // Luôn luôn lọc bỏ thông báo cũ liên quan đến bài viết này
+          const filteredNotifs = currentNotifs.filter(
+            n => !(n.RecipeID === data.RecipeID && n.Type === data.Type)
+          );
+          
+          // NẾU LÀ DELETE (Không còn ai like) -> Chỉ trả về mảng đã lọc (Xóa luôn)
+          if (data.ActionType === 'DELETE') {
+             return filteredNotifs;
+          }
+          
+          // NẾU LÀ UPDATE HOẶC INSERT -> Nhét data mới lên đầu
+          return [data, ...filteredNotifs];
+        });
       });
       return () => { socket.off('new_notification'); };
     }
   }, [isLoggedIn]);
 
-  // Hàm gọi API lấy danh sách
   const fetchNotifications = async () => {
     try {
       const res = await interactionApi.getNotifications();
@@ -78,8 +100,8 @@ export default function Header({ isLoggedIn, currentUser, onLogout }: HeaderProp
       navigate('/login');
     }
   };
-
   return (
+    
     <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
       <div className="flex items-center justify-between max-w-7xl mx-auto px-12 py-4">
         
@@ -139,33 +161,43 @@ export default function Header({ isLoggedIn, currentUser, onLogout }: HeaderProp
                       {(notifications || []).length === 0 ? (
                         <div className="p-8 text-center text-gray-400 text-sm">No notifications yet</div>
                       ) : (
-                        (notifications || []).map((notif) => (
-                          <div 
-                            key={notif.ID} 
-                            onClick={() => handleNotificationClick(notif.RecipeID)}
-                            className={`p-4 flex gap-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 ${!notif.IsRead ? 'bg-blue-50/30' : ''}`}
-                          >
-                           <img 
-                              src={notif.SenderAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(notif.SenderName || 'User')}&background=random&color=fff`} 
-                              className="w-10 h-10 rounded-full object-cover border border-gray-200" 
-                              alt={notif.SenderName} 
-                              onError={(e) => { 
-                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(notif.SenderName || 'User')}&background=random&color=fff`;
-                              }}
-                            />
-                            <div className="flex-1">
-                              <p className="text-sm text-gray-800 leading-snug">
-                                <span className="font-bold">{notif.SenderName}</span> {notif.Message}
-                              </p>
-                              <span className="text-[11px] text-gray-400 mt-1 block">
-                                {new Date(notif.CreatedAt).toLocaleString('vi-VN')}
-                              </span>
+                        (notifications || []).map((notif) => {
+                          // ==========================================
+                          // GỌI HÀM BÓC TÁCH DỮ LIỆU Ở ĐÂY
+                          // ==========================================
+                          const avatarUrl = getValidValue(notif.SenderAvatar);
+                          const senderName = getValidValue(notif.SenderName) || 'User';
+
+                          return (
+                            <div 
+                              key={notif.ID} 
+                              onClick={() => handleNotificationClick(notif.RecipeID)}
+                              className={`p-4 flex gap-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 ${!notif.IsRead ? 'bg-blue-50/30' : ''}`}
+                            >
+                              <img 
+                                // Dùng biến avatarUrl và senderName đã được bóc tách
+                                src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=e5e7eb&color=fff`} 
+                                className="w-10 h-10 rounded-full object-cover border border-gray-200" 
+                                alt={senderName} 
+                                onError={(e) => { 
+                                  (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=e5e7eb&color=fff`;
+                                }}
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-800 leading-snug">
+                                  {/* Dùng biến senderName đã bóc tách */}
+                                  <span className="font-bold">{senderName}</span> {notif.Message}
+                                </p>
+                                <span className="text-[11px] text-gray-400 mt-1 block">
+                                  {new Date(notif.CreatedAt).toLocaleString('vi-VN')}
+                                </span>
+                              </div>
+                              {!notif.IsRead && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shadow-sm shadow-blue-200"></div>
+                              )}
                             </div>
-                            {!notif.IsRead && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shadow-sm shadow-blue-200"></div>
-                            )}
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                     <div className="p-2 border-t border-gray-50 text-center">
