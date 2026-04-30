@@ -24,7 +24,18 @@ export default function RecipeDetailsPage() {
   const [commentsList, setCommentsList] = useState<any[]>([]);
   const [userRating, setUserRating] = useState(0); 
   const [isSubmitting, setIsSubmitting] = useState(false); // State chống spam comment
-
+  const parseImages = (imageString?: string): string[] => {
+  if (!imageString) return [];
+  try {
+    if (imageString.trim().startsWith('[')) {
+      return JSON.parse(imageString);
+    }
+    return [imageString];
+  } catch (error) {
+    console.error("Lỗi đọc dữ liệu ảnh:", error);
+    return [];
+  }
+};
   // --- GỌI API FETCH DATA TỪ BACKEND ---
   useEffect(() => {
     const fetchRecipeData = async () => {
@@ -263,7 +274,16 @@ export default function RecipeDetailsPage() {
                     <div className="flex-1">
                       <p className="text-gray-700 leading-relaxed mb-3">{step.instruction}</p>
                       {step.image && (
-                        <img src={step.image} alt={`Step ${step.id}`} className="w-full h-48 object-cover rounded-xl" />
+                        <div className="flex flex-wrap gap-3">
+                          {parseImages(step.image).map((imgUrl, index) => (
+                            <img 
+                              key={index} 
+                              src={imgUrl} 
+                              alt={`Step ${step.id} - Ảnh ${index + 1}`} 
+                              className="w-full h-48 object-cover rounded-xl" 
+                            />
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>

@@ -14,7 +14,7 @@ interface Ingredient {
 interface CookingStep {
   id: number;
   text: string;
-  image?: string;
+  images?: string[];
 }
 
 export default function CreateRecipePage() {
@@ -92,7 +92,40 @@ export default function CreateRecipePage() {
   const updateCookingStep = (id: number, text: string) => {
     setCookingSteps(cookingSteps.map((step) => (step.id === id ? { ...step, text } : step)));
   };
+  const handleStepImageUpload = async (id: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
+    // Đọc tất cả file cùng lúc bằng Promise.all để tránh lỗi update state liên tục của React
+    const readAsDataURL = (file: File) => new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+
+    const base64Images = await Promise.all(files.map(readAsDataURL));
+
+    setCookingSteps(currentSteps =>
+      currentSteps.map(step => 
+        step.id === id 
+          ? { ...step, images: [...(step.images || []), ...base64Images] } 
+          : step
+      )
+    );
+  };
+
+  const removeStepImage = (stepId: number, imageIndex: number) => {
+    setCookingSteps(currentSteps =>
+      currentSteps.map(step => {
+        if (step.id === stepId && step.images) {
+          const newImages = [...step.images];
+          newImages.splice(imageIndex, 1); // Xóa đúng ảnh được chọn
+          return { ...step, images: newImages };
+        }
+        return step;
+      })
+    );
+  };
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -110,10 +143,9 @@ export default function CreateRecipePage() {
     const recipeBody = {
       title,
       description,
-      cookingTime: parseInt(prepTime) || 0, // DB cần số
-      servings: parseInt(servings) || 1, // DB cần số
+      cookingTime: parseInt(prepTime) || 0,
+      servings: parseInt(servings) || 1,
       difficulty,
-      // Map về đúng object để qua được NOT NULL của DB
       ingredients: ingredients.map(i => ({
         name: i.text,
         amount: 1, 
@@ -121,7 +153,8 @@ export default function CreateRecipePage() {
       })),
       steps: cookingSteps.map((s, index) => ({
         stepNumber: index + 1,
-        content: s.text
+        content: s.text,
+        mediaURL: s.images && s.images.length > 0 ? JSON.stringify(s.images) : null
       }))
     };
 
@@ -400,11 +433,39 @@ export default function CreateRecipePage() {
                         rows={3}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--green-medium)] focus:border-transparent resize-none"
                       />
+                      
+                      {/* Hiển thị danh sách ảnh */}
+                      {step.images && step.images.length > 0 && (
+                        <div className="flex flex-wrap gap-3 mb-2">
+                          {step.images.map((imgBase64, imgIndex) => (
+                            <div key={imgIndex} className="relative w-24 h-24 flex-shrink-0">
+                              <img src={imgBase64} alt={`Step ${index + 1} - Img ${imgIndex + 1}`} className="w-full h-full object-cover rounded-lg border border-gray-200" />
+                              <button
+                                onClick={() => removeStepImage(step.id, imgIndex)}
+                                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-sm"
+                                title="Remove image"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-3">
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                        {/* Bật thuộc tính multiple để chọn nhiều ảnh 1 lúc */}
+                        <label className="cursor-pointer px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors inline-block">
                           <Upload className="w-4 h-4 inline mr-2" />
-                          Add Image
-                        </button>
+                          Add Images
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple /* Cho phép chọn nhiều ảnh */
+                            onChange={(e) => handleStepImageUpload(step.id, e)}
+                            className="hidden"
+                          />
+                        </label>
+                        
                         {cookingSteps.length > 1 && (
                           <button
                             onClick={() => removeCookingStep(step.id)}
