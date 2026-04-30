@@ -13,9 +13,12 @@ export const interactionApi = {
   addRating: (recipeId: number | string, data: RatingPayload) => {
     return axiosClient.post(`/interactions/${recipeId}/rating`, data);
   },
-  getNotifications: () => {
-    return axiosClient.get('/interactions/notifications');
+  
+  // Hỗ trợ truyền phân trang
+  getNotifications: (page: number = 1, limit: number = 10) => {
+    return axiosClient.get(`/interactions/notifications?page=${page}&limit=${limit}`);
   },
+  
   markAsRead: () => {
       return axiosClient.put('/interactions/notifications/mark-read');
   }

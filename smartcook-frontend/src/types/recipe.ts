@@ -32,3 +32,25 @@ export interface RatingPayload {
   score: number;
   comment?: string;
 }
+
+export interface Recipe {
+  id: number;
+  title: string;
+  image: string;
+  prepTime: string;
+  author: {
+    name: string;
+    avatar: string;
+    isKOL: boolean;
+  };
+  likes: number;
+  comments: number;
+  remixes: number;
+}
+
+export interface PaginatedRecipeResponse {
+  data: Recipe[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+}

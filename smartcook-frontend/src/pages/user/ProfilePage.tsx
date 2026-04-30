@@ -13,28 +13,38 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const MASTER_BADGES = [
-  { 
-    id: 1, name: 'Rising Star', icon: '⭐', 
-    description: 'Đạt trên 100 lượt thích', 
-    condition: (stats: any) => stats.totalLikes >= 100 
-  },
-  { 
-    id: 2, name: 'Recipe Master', icon: '👨‍🍳', 
-    description: 'Đã đăng trên 10 công thức', 
-    condition: (stats: any) => stats.recipes >= 10 
-  },
-  { 
-    id: 3, name: 'Community Favorite', icon: '❤️', 
-    description: 'Có trên 50 người theo dõi', 
-    condition: (stats: any) => stats.followers >= 50 
-  },
-  { 
-    id: 5, name: 'Early Adopter', icon: '🚀', 
-    description: 'Thành viên tham gia sớm', 
-    condition: () => true // Giả sử luôn hiện hoặc check theo ngày tạo
-  },
-];
+ const MASTER_BADGES = [
+    { 
+      id: 1, name: 'Rising Star', icon: '⭐', 
+      description: 'Đạt tổng cộng 100 lượt thích', 
+      condition: (stats: any) => (stats?.totalLikes || 0) >= 100 
+    },
+    { 
+      id: 2, name: 'Recipe Master', icon: '👨‍🍳', 
+      description: 'Đã đăng 10 công thức thành công', 
+      condition: (stats: any) => (stats?.recipes || 0) >= 10 
+    },
+    { 
+      id: 3, name: 'Community Favorite', icon: '❤️', 
+      description: 'Đạt trên 50 người theo dõi', 
+      condition: (stats: any) => (stats?.followers || 0) >= 50 
+    },
+    { 
+      id: 4, name: 'Healthy Guru', icon: '🥗', 
+      description: 'Đăng tải 5 công thức Healthy', 
+      condition: (stats: any) => (stats?.healthyRecipes || 0) >= 5 
+    },
+    { 
+      id: 5, name: 'Top Reviewer', icon: '📝', 
+      description: 'Viết hơn 50 lượt đánh giá', 
+      condition: (stats: any) => (stats?.reviews || 0) >= 50 
+    },
+    { 
+      id: 6, name: 'Trend Setter', icon: '🔥', 
+      description: 'Có món ăn lọt top (trên 500 likes)', 
+      condition: (stats: any) => (stats?.topRecipeLikes || 0) >= 500 
+    }
+  ];
   useEffect(() => {
     const fetchProfile = async () => {
       try {
