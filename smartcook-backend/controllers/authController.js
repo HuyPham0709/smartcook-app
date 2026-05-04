@@ -65,9 +65,6 @@ const login = async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.PasswordHash);
         if (!validPassword) return res.status(400).json({ message: 'Sai email hoặc mật khẩu!' });
 
-        // ==========================================
-        // THÊM MỚI: KIỂM TRA TRẠNG THÁI KHÓA TÀI KHOẢN
-        // ==========================================
         const now = new Date();
         const banUntilDate = user.BanUntil ? new Date(user.BanUntil) : null;
         const isBanned = user.active === 0 || (banUntilDate && banUntilDate > now);
@@ -99,11 +96,7 @@ const login = async (req, res) => {
                 }
             });
         }
-        // ==========================================
 
-        // 3. (Tùy chọn) Chèn logic 2FA ở đây nếu user.Is2FAEnabled = 1
-        
-        // 4. Trả về Token
         const tokens = generateTokens(user);
         res.json({ message: 'Đăng nhập thành công', ...tokens, user: { id: user.ID, email: user.Email, name: user.FullName } });
 
