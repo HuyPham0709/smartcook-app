@@ -44,15 +44,177 @@
 
 ```text
 smartcook/
-├── 📁 smartcook-backend      # Node.js, Express, MSSQL, Socket.io
-│   ├── 📁 config             # Cấu hình Database & Security
-│   ├── 📁 controllers        # Logic xử lý Admin, Auth, Recipes
-│   ├── 📁 middleware         # JWT, RBAC, 2FA Validation
-│   └── 📁 routes             # API Endpoints
-├── 📁 smartcook-frontend     # React, Vite, TypeScript, Tailwind CSS
-│   ├── 📁 src/api            # Axios Client & API Services
-│   ├── 📁 src/components/ui  # Hệ thống UI Reusable (Shadcn)
-│   ├── 📁 src/pages/admin    # Quản trị viên & Dashboard
-│   ├── 📁 src/pages/auth     # Đăng nhập/Đăng ký/2FA
-│   └── 📁 src/utils          # PKI Helpers, Socket Client
-└── 📄 SmartCook.sql          # Toàn bộ cấu trúc Database & Procedures
+├── 📁 smartcook-backend
+│   ├── 📁 config
+│   │   └── 📄 db.js
+│   ├── 📁 controllers
+│   │   ├── 📁 admin
+│   │   │   ├── 📄 audit.controller.js
+│   │   │   ├── 📄 dashboard.controller.js
+│   │   │   ├── 📄 moderation.controller.js
+│   │   │   └── 📄 user.controller.js
+│   │   ├── 📄 authController.js
+│   │   ├── 📄 interactionController.js
+│   │   ├── 📄 recipeController.js
+│   │   └── 📄 userController.js
+│   ├── 📁 middleware
+│   │   ├── 📄 auth.middleware.js
+│   │   └── 📄 validation.middleware.js
+│   ├── 📁 routes
+│   │   ├── 📄 adminRoutes.js
+│   │   ├── 📄 authRoutes.js
+│   │   ├── 📄 interactionRoutes.js
+│   │   ├── 📄 recipeRoutes.js
+│   │   └── 📄 userRoutes.js
+│   ├── 📁 services
+│   │   └── 📄 socket.service.js
+│   ├── ⚙️ package-lock.json
+│   ├── ⚙️ package.json
+│   └── 📄 server.js
+├── 📁 smartcook-frontend
+│   ├── 📁 .vite
+│   │   └── 📁 deps
+│   │       ├── ⚙️ _metadata.json
+│   │       ├── 📄 chunk-H52QBHD2.js
+│   │       ├── 📄 chunk-HAXK4ZEP.js
+│   │       ├── 📄 chunk-HEFH33VQ.js
+│   │       ├── 📄 lucide-react.js
+│   │       ├── ⚙️ package.json
+│   │       ├── 📄 react-dom_client.js
+│   │       ├── 📄 react-router-dom.js
+│   │       ├── 📄 react-router.js
+│   │       ├── 📄 react.js
+│   │       └── 📄 recharts.js
+│   ├── 📁 public
+│   │   ├── 🖼️ favicon.svg
+│   │   └── 🖼️ icons.svg
+│   ├── 📁 src
+│   │   ├── 📁 api
+│   │   │   ├── 📄 adminApi.ts
+│   │   │   ├── 📄 authApi.ts
+│   │   │   ├── 📄 axiosClient.ts
+│   │   │   ├── 📄 interactionApi.ts
+│   │   │   ├── 📄 publicApi.ts
+│   │   │   └── 📄 recipeApi.ts
+│   │   ├── 📁 assets
+│   │   │   ├── 🖼️ hero.png
+│   │   │   ├── 🖼️ react.svg
+│   │   │   └── 🖼️ vite.svg
+│   │   ├── 📁 components
+│   │   │   ├── 📁 figma
+│   │   │   │   └── 📄 ImageWithFallback.tsx
+│   │   │   ├── 📁 ui
+│   │   │   │   ├── 📄 accordion.tsx
+│   │   │   │   ├── 📄 alert-dialog.tsx
+│   │   │   │   ├── 📄 alert.tsx
+│   │   │   │   ├── 📄 aspect-ratio.tsx
+│   │   │   │   ├── 📄 avatar.tsx
+│   │   │   │   ├── 📄 badge.tsx
+│   │   │   │   ├── 📄 breadcrumb.tsx
+│   │   │   │   ├── 📄 button.tsx
+│   │   │   │   ├── 📄 calendar.tsx
+│   │   │   │   ├── 📄 card.tsx
+│   │   │   │   ├── 📄 carousel.tsx
+│   │   │   │   ├── 📄 chart.tsx
+│   │   │   │   ├── 📄 checkbox.tsx
+│   │   │   │   ├── 📄 collapsible.tsx
+│   │   │   │   ├── 📄 command.tsx
+│   │   │   │   ├── 📄 context-menu.tsx
+│   │   │   │   ├── 📄 dialog.tsx
+│   │   │   │   ├── 📄 drawer.tsx
+│   │   │   │   ├── 📄 dropdown-menu.tsx
+│   │   │   │   ├── 📄 form.tsx
+│   │   │   │   ├── 📄 hover-card.tsx
+│   │   │   │   ├── 📄 input-otp.tsx
+│   │   │   │   ├── 📄 input.tsx
+│   │   │   │   ├── 📄 label.tsx
+│   │   │   │   ├── 📄 menubar.tsx
+│   │   │   │   ├── 📄 navigation-menu.tsx
+│   │   │   │   ├── 📄 pagination.tsx
+│   │   │   │   ├── 📄 popover.tsx
+│   │   │   │   ├── 📄 progress.tsx
+│   │   │   │   ├── 📄 radio-group.tsx
+│   │   │   │   ├── 📄 resizable.tsx
+│   │   │   │   ├── 📄 scroll-area.tsx
+│   │   │   │   ├── 📄 select.tsx
+│   │   │   │   ├── 📄 separator.tsx
+│   │   │   │   ├── 📄 sheet.tsx
+│   │   │   │   ├── 📄 sidebar.tsx
+│   │   │   │   ├── 📄 skeleton.tsx
+│   │   │   │   ├── 📄 slider.tsx
+│   │   │   │   ├── 📄 sonner.tsx
+│   │   │   │   ├── 📄 switch.tsx
+│   │   │   │   ├── 📄 table.tsx
+│   │   │   │   ├── 📄 tabs.tsx
+│   │   │   │   ├── 📄 textarea.tsx
+│   │   │   │   ├── 📄 toggle-group.tsx
+│   │   │   │   ├── 📄 toggle.tsx
+│   │   │   │   ├── 📄 tooltip.tsx
+│   │   │   │   ├── 📄 use-mobile.ts
+│   │   │   │   └── 📄 utils.ts
+│   │   │   ├── 📄 RecipeCard.tsx
+│   │   │   └── 📄 TrendingKeywords.tsx
+│   │   ├── 📁 hooks
+│   │   │   ├── 📄 useSocket.ts
+│   │   │   └── 📄 useUserManagement.ts
+│   │   ├── 📁 layouts
+│   │   │   ├── 📄 AvatarDropdown.tsx
+│   │   │   ├── 📄 Footer.tsx
+│   │   │   ├── 📄 Header.tsx
+│   │   │   ├── 📄 Layout.tsx
+│   │   │   ├── 📄 UserLayout.tsx
+│   │   │   └── 📄 UserSidebar.tsx
+│   │   ├── 📁 pages
+│   │   │   ├── 📁 admin
+│   │   │   │   ├── 📁 UserManagement
+│   │   │   │   │   └── 📄 UserManagementPage.tsx
+│   │   │   │   ├── 📄 AdminDashBoardPage.tsx
+│   │   │   │   ├── 📄 AuditLogsPage.tsx
+│   │   │   │   └── 📄 ModerationPage.tsx
+│   │   │   ├── 📁 auth
+│   │   │   │   ├── 📄 LoginPage.tsx
+│   │   │   │   └── 📄 RegisterPage.tsx
+│   │   │   ├── 📁 core
+│   │   │   │   ├── 📄 HomePage.tsx
+│   │   │   │   └── 📄 NotFound.tsx
+│   │   │   ├── 📁 recipe
+│   │   │   │   ├── 📄 CookingModePage.tsx
+│   │   │   │   ├── 📄 CreateRecipePage.tsx
+│   │   │   │   ├── 📄 FridgeCreativesPage.tsx
+│   │   │   │   └── 📄 RecipeDetailsPage.tsx
+│   │   │   └── 📁 user
+│   │   │       ├── 📄 ProfilePage.tsx
+│   │   │       └── 📄 SessionManagementPage.tsx
+│   │   ├── 📁 styles
+│   │   │   ├── 🎨 fonts.css
+│   │   │   ├── 🎨 index.css
+│   │   │   ├── 🎨 tailwind.css
+│   │   │   └── 🎨 theme.css
+│   │   ├── 📁 types
+│   │   │   ├── 📄 admin.ts
+│   │   │   ├── 📄 index.ts
+│   │   │   ├── 📄 recipe.ts
+│   │   │   └── 📄 user.ts
+│   │   ├── 📁 utils
+│   │   │   ├── 📁 supabase
+│   │   │   │   └── 📄 info.tsx
+│   │   │   └── 📄 pkiHelper.ts
+│   │   ├── 🎨 App.css
+│   │   ├── 📄 App.jsx
+│   │   ├── 🎨 index.css
+│   │   ├── 📄 main.jsx
+│   │   ├── 📄 routes.tsx
+│   │   └── 📄 socket.ts
+│   ├── ⚙️ .gitignore
+│   ├── 📝 README.md
+│   ├── 📄 eslint.config.js
+│   ├── 🌐 index.html
+│   ├── ⚙️ package-lock.json
+│   ├── ⚙️ package.json
+│   ├── 📄 postcss.config.js
+│   └── 📄 vite.config.js
+├── ⚙️ .gitignore
+├── 📕 ERP_sql.pdf
+├── 📄 SmartCook.sql
+├── ⚙️ docker-compose.yml
+├── ⚙️ package-lock.json
