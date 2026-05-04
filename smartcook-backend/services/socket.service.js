@@ -7,7 +7,11 @@ let io;
 module.exports = {
     init: (server) => {
         io = new Server(server, {
-            cors: { origin: "*", methods: ["GET", "POST"] }
+            cors: { 
+                origin: "http://localhost:5173", // Trỏ đích danh tới Vite Frontend thay vì "*"
+                methods: ["GET", "POST"],
+                credentials: true // Cho phép truyền token/auth
+            }
         });
 
         // --- BẢO MẬT: MIDDLEWARE XÁC THỰC ---
