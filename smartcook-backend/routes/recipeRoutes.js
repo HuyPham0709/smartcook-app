@@ -7,4 +7,5 @@ const recipeController = require('../controllers/recipeController');
 router.post('/', recipeController.createRecipe);
 router.get('/', recipeController.getAllRecipes);
 router.get('/:recipeId', recipeController.getRecipeById);
+router.post('/estimate-nutrition', recipeController.estimateNutrition);
 module.exports = router;

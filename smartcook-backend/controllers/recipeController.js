@@ -261,3 +261,98 @@ exports.getRecipeById = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
+exports.estimateNutrition = async (req, res) => {
+    const { ingredients, servings, userId } = req.body;
+
+    try {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+            Estimate nutritional values per ONE serving for a dish with:
+            Ingredients: ${JSON.stringify(ingredients)}
+            Total servings: ${servings}
+            Return ONLY a raw JSON object: {"calories": number, "protein": number, "carbs": number, "fat": number}.
+            Values are numbers only (calories in kcal, others in grams).
+        `;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+        const nutritionData = JSON.parse(responseText);
+
+        // Lưu log vào bảng AILogs đã có của bạn
+        const pool = await poolPromise;
+        await pool.request()
+            .input('UserID', sql.Int, userId)
+            .input('Prompt', sql.NVarChar, prompt)
+            .input('Response', sql.NVarChar, responseText)
+            .input('FeatureType', sql.NVarChar, 'NutritionEstimation')
+            .query(`INSERT INTO AILogs (UserID, Prompt, Response, FeatureType) VALUES (@UserID, @Prompt, @Response, @FeatureType)`);
+
+        res.status(200).json(nutritionData);
+    } catch (error) {
+        console.error('AI Error:', error);
+        res.status(500).json({ message: 'Không thể tính toán dinh dưỡng' });
+    }
+};
+
+// --- 2. Cập nhật createRecipe để lưu dinh dưỡng ---
+exports.createRecipe = async (req, res) => {
+    const { 
+        userId, title, description, thumbnailURL, 
+        cookingTime, servings, difficulty, digitalSignature, 
+        ingredients, steps,
+        calories, protein, carbs, fat // Nhận thêm 4 trường này từ FE
+    } = req.body;
+
+    try {
+        const pool = await poolPromise;
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            const requestRecipe = new sql.Request(transaction);
+            const recipeResult = await requestRecipe
+                .input('UserID', sql.Int, userId)
+                .input('Title', sql.NVarChar, title)
+                .input('Description', sql.NVarChar, description || '')
+                .input('ThumbnailURL', sql.NVarChar, thumbnailURL || '')
+                .input('CookingTime', sql.Int, cookingTime)
+                .input('Servings', sql.Int, servings)
+                .input('Difficulty', sql.NVarChar, difficulty)
+                .input('DigitalSignature', sql.NVarChar, digitalSignature || '')
+                // Thêm input cho 4 cột dinh dưỡng
+                .input('Calories', sql.Float, calories || 0)
+                .input('Protein', sql.Float, protein || 0)
+                .input('Carbs', sql.Float, carbs || 0)
+                .input('Fat', sql.Float, fat || 0)
+                .query(`
+                    INSERT INTO Recipes (UserID, Title, Description, ThumbnailURL, CookingTime, Servings, Difficulty, DigitalSignature, Calories, Protein, Carbs, Fat) 
+                    OUTPUT INSERTED.ID 
+                    VALUES (@UserID, @Title, @Description, @ThumbnailURL, @CookingTime, @Servings, @Difficulty, @DigitalSignature, @Calories, @Protein, @Carbs, @Fat)
+                `);
+            
+            // ... (Phần code insert Ingredients và Steps giữ nguyên như file cũ của bạn)
+            const newRecipeId = recipeResult.recordset[0].ID;
+            if (ingredients && ingredients.length > 0) {
+                for (let ing of ingredients) {
+                    const requestIng = new sql.Request(transaction);
+                    await requestIng
+                        .input('RecipeID', sql.Int, newRecipeId)
+                        .input('Name', sql.NVarChar, ing.name)
+                        .input('Amount', sql.Float, ing.amount || 1)
+                        .input('Unit', sql.NVarChar, ing.unit || 'tuỳ chỉnh')
+                        .query(`INSERT INTO Ingredients (RecipeID, Name, Amount, Unit) VALUES (@RecipeID, @Name, @Amount, @Unit)`);
+                }
+            }
+            // ... (Tiếp tục xử lý steps)
+            await transaction.commit();
+            res.status(201).json({ message: 'Thành công!', recipeId: newRecipeId });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};
