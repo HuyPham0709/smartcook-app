@@ -1,7 +1,14 @@
+const dotenv = require('dotenv');
+dotenv.config({
+  path: process.env.NODE_ENV === 'env' ? '.env.docker' : '.env.local'
+});
+
+require('./config/db');
+
 const express = require('express');
 const cors = require('cors');
-const http = require('http'); // THÊM DÒNG NÀY
-const socketService = require('./services/socket.service'); // THÊM DÒNG NÀY
+const http = require('http');
+const socketService = require('./services/socket.service'); // Đảm bảo đường dẫn đúng
 
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -10,8 +17,14 @@ const recipeRoutes = require('./routes/recipeRoutes');
 const interactionRoutes = require('./routes/interactionRoutes');
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '50mb' })); 
+
+// Lấy FRONTEND_URL từ env, hỗ trợ nhiều URL ngăn cách bằng dấu phẩy
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? process.env.FRONTEND_URL.split(',') 
+  : ["http://localhost:5173"];
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use('/api/users', userRoutes);
@@ -20,12 +33,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipeRoutes);
 app.use('/api/interactions', interactionRoutes);
 
-// KHỞI TẠO HTTP SERVER VÀ SOCKET
 const server = http.createServer(app);
-socketService.init(server); // Khởi động Socket
+socketService.init(server);
 
-const PORT = 3000;
-// Sửa app.listen thành server.listen
-server.listen(PORT, () => {
-    console.log(`🚀 Server Backend và Socket.io đang chạy tại http://localhost:${PORT}`);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server Backend và Socket.io đang chạy tại: ${PORT}`);
 });

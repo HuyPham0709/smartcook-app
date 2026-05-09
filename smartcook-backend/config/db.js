@@ -2,14 +2,12 @@
 const sql = require('mssql');
 
 const config = {
-    user: 'sa',       
-    password: '123',   
-    server: 'localhost',          
-    database: 'SmartCookDB', 
-    options: {
-        encrypt: true,           
-        trustServerCertificate: true 
-    }
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT),
+    database: process.env.DB_NAME,
+    options: { trustServerCertificate: true }
 };
 
 // Tạo một Promise kết nối để dùng chung cho toàn bộ app
